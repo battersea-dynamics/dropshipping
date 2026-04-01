@@ -1,0 +1,41 @@
+[
+  {
+    "keyword": "carica wireless",
+    "trends_score": 11,
+    "trends_growth": 300,
+    "amazon_rank": null,
+    "amazon_name": null,
+    "amazon_url": null,
+    "sources": [
+      "Google Trends"
+    ],
+    "strength": "🔥 FORTE",
+    "detected_at": "01/04/2026 18:35"
+  },
+  {
+    "keyword": "cuffie conduzione ossea",
+    "trends_score": 0,
+    "trends_growth": 200,
+    "amazon_rank": null,
+    "amazon_name": null,
+    "amazon_url": null,
+    "sources": [
+      "Google Trends"
+    ],
+    "strength": "🔥 FORTE",
+    "detected_at": "01/04/2026 18:35"
+  },
+  {
+    "keyword": "purificatore aria",
+    "trends_score": 27,
+    "trends_growth": 44,
+    "amazon_rank": null,
+    "amazon_name": null,
+    "amazon_url": null,
+    "sources": [
+      "Google Trends"
+    ],
+    "strength": "📊 DEBOLE",
+    "detected_at": "01/04/2026 18:35"
+  }
+]

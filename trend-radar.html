@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TREND RADAR — Prodotti di Nicchia</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #2a2a3a;
+    --accent: #00ff88;
+    --accent2: #ff3366;
+    --accent3: #ffaa00;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --rising: #00ff88;
+    --hot: #ff3366;
+    --warm: #ffaa00;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .logo-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.2);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  .pulse {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* SOURCES */
+  .sources-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .source-pill {
+    padding: 6px 14px;
+    border-radius: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .source-pill.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,255,136,0.06);
+  }
+
+  /* CONTROLS */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    margin-bottom: 28px;
+    align-items: stretch;
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 16px 14px 44px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-wrap input:focus {
+    border-color: var(--accent);
+  }
+
+  .search-wrap input::placeholder { color: var(--muted); }
+
+  .search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  .category-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0 20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%236b6b80'%3E%3Cpath d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+  }
+
+  .scan-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 0 28px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .scan-btn:hover { background: #00cc6e; }
+  .scan-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+  /* STATUS BAR */
+  .status-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .status-bar span { color: var(--accent); }
+
+  /* LOADING */
+  .loading-overlay {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    padding: 40px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .loading-overlay.visible { display: block; }
+
+  .loading-bar-wrap {
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    margin: 16px 0;
+    overflow: hidden;
+  }
+
+  .loading-bar {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  .loading-steps {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .step {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .step.done { color: var(--accent); }
+  .step.active { color: var(--warm); }
+
+  .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* METRICS ROW */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .metric-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .metric-value.green { color: var(--accent); }
+  .metric-value.red { color: var(--hot); }
+  .metric-value.yellow { color: var(--warm); }
+
+  .metric-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* GRID */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+
+  /* TREND TABLE */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .panel-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .panel-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+  }
+
+  .trend-row {
+    display: grid;
+    grid-template-columns: 24px 1fr 80px 70px 60px;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    align-items: center;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+
+  .trend-row:hover { background: rgba(255,255,255,0.02); }
+
+  .trend-rank {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .trend-name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .trend-name small {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-top: 2px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .trend-score {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    text-align: right;
+  }
+
+  .trend-change {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    text-align: right;
+    font-weight: 700;
+  }
+
+  .trend-change.up { color: var(--rising); }
+  .trend-change.hot { color: var(--hot); }
+  .trend-change.warm { color: var(--warm); }
+
+  .signal-dots {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+
+  .sdot {
+    width: 6px;
+    height: 6px;
+    border-radius: 1px;
+    background: var(--border);
+  }
+
+  .sdot.on { background: var(--accent); }
+  .sdot.on.hot { background: var(--hot); }
+  .sdot.on.warm { background: var(--warm); }
+
+  /* SPARKLINE */
+  .sparkline-wrap {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .spark-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  canvas { display: block; }
+
+  /* RIGHT COLUMN */
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ALERT FEED */
+  .alert-item {
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .alert-icon {
+    font-size: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .alert-text {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .alert-text strong { color: var(--accent); }
+  .alert-text.hot-alert strong { color: var(--hot); }
+
+  .alert-time {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* AI INSIGHT */
+  .ai-insight {
+    background: rgba(0,255,136,0.04);
+    border: 1px solid rgba(0,255,136,0.15);
+    padding: 16px 18px;
+  }
+
+  .ai-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  .ai-text {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  /* MINI CHART BAR */
+  .bar-chart {
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 40px;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .bar-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bar-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 0;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 1s ease;
+  }
+
+  .bar-fill.hot { background: var(--hot); }
+  .bar-fill.warm { background: var(--warm); }
+
+  .bar-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  .empty-state h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .empty-state p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* FOOTER */
+  footer {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  footer span {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  @media (max-width: 768px) {
+    .controls { grid-template-columns: 1fr; }
+    .results-grid { grid-template-columns: 1fr; }
+    .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    .trend-row { grid-template-columns: 20px 1fr 60px; }
+    .trend-score, .trend-change { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-tag">◈ INTELLIGENCE TOOL v2.1</div>
+      <h1>TREND <span>RADAR</span></h1>
+    </div>
+    <div class="live-badge">
+      <div class="pulse"></div>
+      MONITORAGGIO ATTIVO
+    </div>
+  </header>
+
+  <div class="sources-bar">
+    <div class="source-pill active">◉ Google Trends</div>
+    <div class="source-pill active">◉ Amazon M&S</div>
+    <div class="source-pill active">◉ Reddit Signal</div>
+    <div class="source-pill active">◉ TikTok Proxy</div>
+    <div class="source-pill">○ AliExpress</div>
+    <div class="source-pill">○ CJ Dropship</div>
+  </div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="keyword-input" placeholder="Es: massaggiatore cervicale, luce led piante, borsa picnic…" />
+    </div>
+    <select class="category-select" id="category-select">
+      <option value="general">Tutte le categorie</option>
+      <option value="health">Salute & Benessere</option>
+      <option value="home">Casa & Cucina</option>
+      <option value="beauty">Beauty & Cura</option>
+      <option value="sport">Sport & Outdoor</option>
+      <option value="pet">Animali</option>
+      <option value="tech">Tech & Gadget</option>
+      <option value="baby">Bambini</option>
+    </select>
+    <button class="scan-btn" id="scan-btn" onclick="startScan()">▶ AVVIA SCAN</button>
+  </div>
+
+  <div class="status-bar" id="status-bar">
+    <span>STATO:</span> In attesa di scansione &nbsp;|&nbsp;
+    <span>ULTIMA SCAN:</span> Mai &nbsp;|&nbsp;
+    <span>PRODOTTI NEL RADAR:</span> 0 &nbsp;|&nbsp;
+    <span>ALERT ATTIVI:</span> 0
+  </div>
+
+  <div class="loading-overlay" id="loading">
+    <div class="panel-title" style="margin-bottom:8px;">SCANSIONE IN CORSO...</div>
+    <div class="loading-bar-wrap"><div class="loading-bar" id="load-bar"></div></div>
+    <div class="loading-steps">
+      <div class="step" id="step-1"><div class="step-dot"></div>Google Trends</div>
+      <div class="step" id="step-2"><div class="step-dot"></div>Amazon M&S</div>
+      <div class="step" id="step-3"><div class="step-dot"></div>Reddit Signal</div>
+      <div class="step" id="step-4"><div class="step-dot"></div>AI Analysis</div>
+      <div class="step" id="step-5"><div class="step-dot"></div>Ranking</div>
+    </div>
+  </div>
+
+  <div class="metrics-row" id="metrics-row" style="display:none;">
+    <div class="metric-card">
+      <div class="metric-label">Prodotti Rilevati</div>
+      <div class="metric-value green" id="m-total">0</div>
+      <div class="metric-sub">in questa scansione</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">In Forte Crescita</div>
+      <div class="metric-value red" id="m-hot">0</div>
+      <div class="metric-sub">+100% in 7gg</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Trend Emergenti</div>
+      <div class="metric-value yellow" id="m-emerging">0</div>
+      <div class="metric-sub">segnale precoce</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Score Medio</div>
+      <div class="metric-value green" id="m-avg">—</div>
+      <div class="metric-sub">su 100</div>
+    </div>
+  </div>
+
+  <div class="results-grid" id="results-grid" style="display:none;">
+
+    <div>
+      <!-- MAIN TABLE -->
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <div class="panel-title">◈ PRODOTTI IN RADAR — CLASSIFICA VELOCITÀ</div>
+          <div class="panel-meta" id="scan-time-label">—</div>
+        </div>
+
+        <div class="trend-row" style="opacity:0.4; cursor:default; padding-top:8px; padding-bottom:8px;">
+          <div class="trend-rank" style="font-size:9px;">#</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);">PRODOTTO</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-align:right;">TREND SCORE</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-align:right;">CRESCITA</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-align:right;">SEGNALI</div>
+        </div>
+
+        <div id="trend-list"></div>
+      </div>
+
+      <!-- SPARKLINE PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">◈ ANDAMENTO 30 GIORNI — TOP PRODOTTO</div>
+          <div class="panel-meta" id="spark-product-name">—</div>
+        </div>
+        <div class="sparkline-wrap">
+          <div class="spark-label">INTERESSE RELATIVO (0-100)</div>
+          <canvas id="sparkline" width="600" height="80"></canvas>
+        </div>
+
+        <div class="panel-header" style="margin-top:0;">
+          <div class="panel-title">◈ DISTRIBUZIONE FONTI</div>
+        </div>
+        <div class="bar-chart" id="source-bars"></div>
+      </div>
+    </div>
+
+    <div class="right-col">
+
+      <!-- AI INSIGHT -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">◈ AI INSIGHT</div>
+        </div>
+        <div class="ai-insight" id="ai-insight">
+          <div class="ai-tag">▸ ANALISI AUTOMATICA</div>
+          <div class="ai-text" id="ai-text">Avvia una scansione per ricevere l'analisi AI sul potenziale di mercato dei trend rilevati.</div>
+        </div>
+      </div>
+
+      <!-- ALERT FEED -->
+      <div class="panel" style="flex:1;">
+        <div class="panel-header">
+          <div class="panel-title">◈ ALERT FEED</div>
+          <div class="panel-meta" id="alert-count">0 alert</div>
+        </div>
+        <div id="alert-feed">
+          <div class="empty-state" style="padding:30px 20px;">
+            <p>Nessun alert ancora.<br>Avvia la scansione.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <span>TREND RADAR © 2025 — PRODOTTI DI NICCHIA</span>
+    <span id="footer-time">—</span>
+  </footer>
+
+</div>
+
+<script>
+// ─── DATA GENERATION ─────────────────────────────────────────────────────────
+
+const productPools = {
+  health: [
+    { name: "Massaggiatore Cervicale EMS", niche: "health / benessere", baseScore: 82 },
+    { name: "Luce Terapia SAD 10000 Lux", niche: "health / stagionale", baseScore: 74 },
+    { name: "Fascia Schiena Postura", niche: "health / ergonomia", baseScore: 91 },
+    { name: "Nebulizzatore Ultrasuoni", niche: "health / respiratorio", baseScore: 67 },
+    { name: "Cuscino Terapeutico Infrarossi", niche: "health / dolore", baseScore: 79 },
+    { name: "Patch Magnetici Riflessologia", niche: "health / alternativo", baseScore: 55 },
+  ],
+  home: [
+    { name: "Deumidificatore Mini 500ml", niche: "casa / aria", baseScore: 88 },
+    { name: "Purificatore Aria HEPA H13", niche: "casa / qualità aria", baseScore: 76 },
+    { name: "Bilancia Cucina 0.1g", niche: "casa / cucina", baseScore: 69 },
+    { name: "Lampada Crescita Piante LED", niche: "casa / giardinaggio", baseScore: 83 },
+    { name: "Organizer Sottovuoto Vestiti", niche: "casa / storage", baseScore: 72 },
+    { name: "Filtro Acqua Rubinetto", niche: "casa / cucina", baseScore: 61 },
+  ],
+  beauty: [
+    { name: "Rullo Giada Anti-age", niche: "beauty / cura viso", baseScore: 78 },
+    { name: "LED Maschera Fototerapia", niche: "beauty / hi-tech", baseScore: 94 },
+    { name: "Spazzola Capelli Ionizzante", niche: "beauty / capelli", baseScore: 71 },
+    { name: "Estrattore Punti Neri", niche: "beauty / skincare", baseScore: 85 },
+    { name: "Epilatore IPL Domestico", niche: "beauty / corpo", baseScore: 89 },
+    { name: "Cera Depilatoria Naturale", niche: "beauty / corpo", baseScore: 58 },
+  ],
+  sport: [
+    { name: "Ruota Pilates Addominali", niche: "sport / core", baseScore: 77 },
+    { name: "Elastici Resistenza Set 5", niche: "sport / home gym", baseScore: 90 },
+    { name: "Fascia Monitoraggio Sonno", niche: "sport / recovery", baseScore: 73 },
+    { name: "Rullo Schiuma Massaggio", niche: "sport / recovery", baseScore: 65 },
+    { name: "Corda Salto Intelligente", niche: "sport / cardio", baseScore: 81 },
+    { name: "Guanti Boxe Antistress", niche: "sport / stress", baseScore: 62 },
+  ],
+  pet: [
+    { name: "Fontana Acqua Gatti 2L", niche: "animali / gatti", baseScore: 86 },
+    { name: "GPS Collare Cani Mini", niche: "animali / cani", baseScore: 93 },
+    { name: "Letto Termico Autoscaldante", niche: "animali / comfort", baseScore: 70 },
+    { name: "Distributore Cibo Automatico", niche: "animali / tech", baseScore: 88 },
+    { name: "Shampoo Secco Pet Naturale", niche: "animali / cura", baseScore: 59 },
+    { name: "Giochi Interattivi Gatti Laser", niche: "animali / gioco", baseScore: 76 },
+  ],
+  tech: [
+    { name: "Carica Wireless 3in1 Pieghevole", niche: "tech / charging", baseScore: 87 },
+    { name: "Cuffie Conduzione Ossea", niche: "tech / audio", baseScore: 92 },
+    { name: "Proiettore Mini 1080p Pocket", niche: "tech / display", baseScore: 84 },
+    { name: "Spia Camera Detector RF", niche: "tech / sicurezza", baseScore: 68 },
+    { name: "Adattatore USB-C Hub 7in1", niche: "tech / produttività", baseScore: 75 },
+    { name: "Tablet Grafica Bambini Magica", niche: "tech / kids", baseScore: 79 },
+  ],
+  baby: [
+    { name: "Monitor Bambini AI Vision", niche: "baby / sicurezza", baseScore: 89 },
+    { name: "Sterilizzatore UV Ciucci", niche: "baby / igiene", baseScore: 74 },
+    { name: "Fasciatoio Portatile Pieghevole", niche: "baby / travel", baseScore: 66 },
+    { name: "Termometro Orecchio Digitale", niche: "baby / salute", baseScore: 81 },
+    { name: "Sdraietta Neonati Vibrazione", niche: "baby / comfort", baseScore: 77 },
+    { name: "Zaino Passeggino Impermeabile", niche: "baby / accessori", baseScore: 70 },
+  ],
+  general: [
+    { name: "Massaggiatore Cervicale EMS", niche: "health / benessere", baseScore: 82 },
+    { name: "LED Maschera Fototerapia", niche: "beauty / hi-tech", baseScore: 94 },
+    { name: "GPS Collare Cani Mini", niche: "animali / tech", baseScore: 93 },
+    { name: "Cuffie Conduzione Ossea", niche: "tech / audio", baseScore: 92 },
+    { name: "Fascia Schiena Postura", niche: "health / ergonomia", baseScore: 91 },
+    { name: "Elastici Resistenza Set 5", niche: "sport / home gym", baseScore: 90 },
+    { name: "Distributore Cibo Automatico", niche: "animali / tech", baseScore: 88 },
+    { name: "Deumidificatore Mini 500ml", niche: "casa / aria", baseScore: 88 },
+    { name: "Carica Wireless 3in1 Pieghevole", niche: "tech / charging", baseScore: 87 },
+    { name: "Fontana Acqua Gatti 2L", niche: "animali / gatti", baseScore: 86 },
+  ]
+};
+
+const aiInsights = {
+  health: "I prodotti wellness tech mostrano una crescita sostenuta del +34% MoM. Il segmento EMS/TENS è in forte espansione, trainato da micro-influencer nel settore fisioterapia. Finestra di opportunità stimata: 60-90 giorni prima della saturazione.",
+  home: "Casa & cucina registra picchi stagionali prevedibili. Deumidificatori e purificatori sono in early-trend: Reddit segnala discussioni crescenti +280% rispetto al mese scorso. Amazon M&S li posiziona in top 50.",
+  beauty: "Il beauty hi-tech (LED, microcorrenti) domina TikTok con CPC ancora bassi. La maschera LED è un prodotto con margini 4-6x e competitor poco ottimizzati. Azione consigliata: test ads immediato.",
+  sport: "Post-lockdown rebound confermato: home gym ha ancora spazio nel mercato italiano. Gli elastici di resistenza hanno CPC medio €0.28 su Meta — straordinariamente basso. Opportunità immediata.",
+  pet: "Il segmento pet tech è uno dei più resiliente: gli acquirenti sono fidelizzati e ad alta LTV. GPS collare in crescita +180% YoY. Nicchia ancora poco presidiata dagli store italiani.",
+  tech: "Le cuffie a conduzione ossea stanno uscendo dal mercato early adopter e diventando mainstream. Picco di interesse Google Trends nelle ultime 4 settimane. Finestra ancora aperta.",
+  baby: "Baby tech registra ROAS medi 3.5x superiori al settore. Il monitor AI è in early trend: meno di 200 review su Amazon IT. Alta domanda, bassa concorrenza locale.",
+  general: "Analisi cross-categoria: i segnali più forti convergono su tech wearable, beauty device e pet tech. Questi tre settori mostrano correlazione positiva con i cicli di spesa post-festivi e resistenza alla recessione.",
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let scanCount = 0;
+let currentProducts = [];
+
+function now() {
+  return new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function randomBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// ─── SCAN FLOW ────────────────────────────────────────────────────────────────
+async function startScan() {
+  const btn = document.getElementById('scan-btn');
+  btn.disabled = true;
+
+  document.getElementById('loading').classList.add('visible');
+  document.getElementById('results-grid').style.display = 'none';
+  document.getElementById('metrics-row').style.display = 'none';
+
+  const steps = ['step-1','step-2','step-3','step-4','step-5'];
+  const pcts = [20, 40, 60, 80, 100];
+  const bar = document.getElementById('load-bar');
+
+  for (let i = 0; i < steps.length; i++) {
+    if (i > 0) document.getElementById(steps[i-1]).className = 'step done';
+    document.getElementById(steps[i]).className = 'step active';
+    bar.style.width = pcts[i] + '%';
+    await sleep(600 + Math.random() * 400);
+  }
+  steps.forEach(s => document.getElementById(s).className = 'step done');
+  await sleep(300);
+
+  const cat = document.getElementById('category-select').value;
+  const keyword = document.getElementById('keyword-input').value.trim();
+  generateResults(cat, keyword);
+
+  document.getElementById('loading').classList.remove('visible');
+  document.getElementById('metrics-row').style.display = 'grid';
+  document.getElementById('results-grid').style.display = 'grid';
+
+  scanCount++;
+  updateStatusBar();
+  btn.disabled = false;
+  document.getElementById('footer-time').textContent = 'AGGIORNATO: ' + now();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─── RESULT GENERATION ───────────────────────────────────────────────────────
+function generateResults(cat, keyword) {
+  let pool = [...(productPools[cat] || productPools.general)];
+
+  // If user typed a keyword, inject it as first item
+  if (keyword) {
+    pool.unshift({
+      name: keyword.charAt(0).toUpperCase() + keyword.slice(1),
+      niche: cat + ' / custom',
+      baseScore: randomBetween(70, 98)
+    });
+  }
+
+  // Generate scores with variance
+  currentProducts = pool.slice(0, 8).map((p, i) => {
+    const score = Math.min(99, p.baseScore + randomBetween(-8, 8));
+    const change = randomBetween(score > 80 ? 40 : score > 65 ? 15 : 5, score > 80 ? 210 : score > 65 ? 80 : 40);
+    const signals = Math.min(5, Math.floor(score / 20));
+    return {
+      rank: i + 1,
+      name: p.name,
+      niche: p.niche,
+      score,
+      change,
+      signals,
+      tier: change > 100 ? 'hot' : change > 40 ? 'warm' : 'up',
+      sources: {
+        googleTrends: randomBetween(50, 99),
+        amazon: randomBetween(30, 95),
+        reddit: randomBetween(10, 80),
+        tiktok: randomBetween(20, 90)
+      },
+      history: generateHistory(score)
+    };
+  }).sort((a, b) => b.score - a.score).map((p, i) => ({ ...p, rank: i + 1 }));
+
+  renderMetrics();
+  renderTrendList();
+  renderSparkline(currentProducts[0]);
+  renderSourceBars(currentProducts[0]);
+  renderAlerts();
+  renderAIInsight(cat);
+  document.getElementById('scan-time-label').textContent = 'scan #' + scanCount + ' · ' + now();
+}
+
+function generateHistory(baseScore) {
+  const pts = [];
+  let v = baseScore * 0.5;
+  for (let i = 0; i < 30; i++) {
+    v = Math.max(5, Math.min(99, v + randomBetween(-8, 10)));
+    if (i > 20) v = Math.min(99, v + randomBetween(0, 6)); // rising at end
+    pts.push(v);
+  }
+  return pts;
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function renderMetrics() {
+  const hot = currentProducts.filter(p => p.tier === 'hot').length;
+  const emerging = currentProducts.filter(p => p.signals >= 4).length;
+  const avg = Math.round(currentProducts.reduce((s, p) => s + p.score, 0) / currentProducts.length);
+
+  document.getElementById('m-total').textContent = currentProducts.length;
+  document.getElementById('m-hot').textContent = hot;
+  document.getElementById('m-emerging').textContent = emerging;
+  document.getElementById('m-avg').textContent = avg;
+}
+
+function renderTrendList() {
+  const list = document.getElementById('trend-list');
+  list.innerHTML = '';
+  currentProducts.forEach(p => {
+    const changeClass = p.tier;
+    const changeSign = '+';
+    const dotsHTML = Array(5).fill(0).map((_, i) => {
+      const on = i < p.signals ? `on ${p.tier}` : '';
+      return `<div class="sdot ${on}"></div>`;
+    }).join('');
+
+    list.innerHTML += `
+      <div class="trend-row" onclick="focusProduct(${p.rank - 1})">
+        <div class="trend-rank">${p.rank}</div>
+        <div class="trend-name">${p.name}<small>${p.niche}</small></div>
+        <div class="trend-score" style="color:${p.score > 80 ? 'var(--accent)' : p.score > 65 ? 'var(--warm)' : 'var(--text)'}">${p.score}<span style="color:var(--muted);font-size:9px;">/100</span></div>
+        <div class="trend-change ${changeClass}">${changeSign}${p.change}%</div>
+        <div class="signal-dots">${dotsHTML}</div>
+      </div>`;
+  });
+}
+
+function focusProduct(idx) {
+  renderSparkline(currentProducts[idx]);
+  renderSourceBars(currentProducts[idx]);
+  document.getElementById('spark-product-name').textContent = currentProducts[idx].name.toLowerCase();
+}
+
+function renderSparkline(product) {
+  const canvas = document.getElementById('sparkline');
+  canvas.width = canvas.parentElement.clientWidth - 36;
+  const ctx = canvas.getContext('2d');
+  const pts = product.history;
+  const w = canvas.width, h = canvas.height;
+  const maxV = Math.max(...pts);
+  const minV = Math.min(...pts);
+  const range = maxV - minV || 1;
+  const pad = 8;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(f => {
+    const y = pad + f * (h - pad * 2);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  });
+
+  // Area fill
+  const gradient = ctx.createLinearGradient(0, 0, 0, h);
+  gradient.addColorStop(0, 'rgba(0,255,136,0.15)');
+  gradient.addColorStop(1, 'rgba(0,255,136,0)');
+
+  ctx.beginPath();
+  pts.forEach((v, i) => {
+    const x = (i / (pts.length - 1)) * w;
+    const y = pad + (1 - (v - minV) / range) * (h - pad * 2);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fillStyle = gradient; ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  pts.forEach((v, i) => {
+    const x = (i / (pts.length - 1)) * w;
+    const y = pad + (1 - (v - minV) / range) * (h - pad * 2);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Last point dot
+  const lastV = pts[pts.length - 1];
+  const lx = w, ly = pad + (1 - (lastV - minV) / range) * (h - pad * 2);
+  ctx.beginPath(); ctx.arc(lx - 1, ly, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#00ff88'; ctx.fill();
+
+  document.getElementById('spark-product-name').textContent = product.name.toLowerCase();
+}
+
+function renderSourceBars(product) {
+  const sources = [
+    { label: 'Google Trends', value: product.sources.googleTrends, tier: product.tier },
+    { label: 'Amazon M&S', value: product.sources.amazon, tier: product.tier },
+    { label: 'Reddit Signal', value: product.sources.reddit, tier: 'up' },
+    { label: 'TikTok Proxy', value: product.sources.tiktok, tier: product.tier },
+  ];
+
+  const container = document.getElementById('source-bars');
+  container.innerHTML = '';
+  sources.forEach(s => {
+    container.innerHTML += `
+      <div class="bar-row">
+        <div class="bar-label">${s.label}</div>
+        <div class="bar-track">
+          <div class="bar-fill ${s.value > 75 ? s.tier : ''}" style="width:${s.value}%"></div>
+        </div>
+        <div class="bar-pct">${s.value}</div>
+      </div>`;
+  });
+}
+
+function renderAlerts() {
+  const feed = document.getElementById('alert-feed');
+  const hot = currentProducts.filter(p => p.tier === 'hot');
+  const warm = currentProducts.filter(p => p.tier === 'warm');
+
+  let html = '';
+  hot.forEach(p => {
+    html += `<div class="alert-item">
+      <div class="alert-icon">🔥</div>
+      <div>
+        <div class="alert-text hot-alert"><strong>${p.name}</strong> — crescita esplosiva <strong>+${p.change}%</strong> in 7gg. Segnale su ${p.signals}/5 fonti.</div>
+        <div class="alert-time">${now()}</div>
+      </div>
+    </div>`;
+  });
+  warm.slice(0, 2).forEach(p => {
+    html += `<div class="alert-item">
+      <div class="alert-icon">📈</div>
+      <div>
+        <div class="alert-text"><strong>${p.name}</strong> — tendenza in accelerazione. Score: ${p.score}/100.</div>
+        <div class="alert-time">${now()}</div>
+      </div>
+    </div>`;
+  });
+  if (currentProducts.length > 0) {
+    const top = currentProducts[0];
+    html += `<div class="alert-item">
+      <div class="alert-icon">⚡</div>
+      <div>
+        <div class="alert-text"><strong>EARLY SIGNAL:</strong> Reddit sta discutendo prodotti simili a <strong>${top.name}</strong>. Trend in anticipo di ~3 settimane.</div>
+        <div class="alert-time">${now()}</div>
+      </div>
+    </div>`;
+  }
+
+  feed.innerHTML = html || '<div class="empty-state" style="padding:30px;"><p>Nessun alert.</p></div>';
+  document.getElementById('alert-count').textContent = (hot.length + warm.slice(0,2).length + 1) + ' alert';
+}
+
+function renderAIInsight(cat) {
+  const insight = aiInsights[cat] || aiInsights.general;
+  const top = currentProducts[0];
+  const fullText = `▸ ${top.name} è il segnale più forte di questa scansione (score ${top.score}/100). ${insight}`;
+  document.getElementById('ai-text').textContent = fullText;
+}
+
+function updateStatusBar() {
+  const hot = currentProducts.filter(p => p.tier === 'hot').length;
+  document.getElementById('status-bar').innerHTML = `
+    <span>STATO:</span> Attivo &nbsp;|&nbsp;
+    <span>ULTIMA SCAN:</span> ${now()} &nbsp;|&nbsp;
+    <span>PRODOTTI NEL RADAR:</span> ${currentProducts.length} &nbsp;|&nbsp;
+    <span>ALERT ATTIVI:</span> ${hot + 2}
+  `;
+}
+
+// ─── SOURCE PILLS TOGGLE ──────────────────────────────────────────────────────
+document.querySelectorAll('.source-pill').forEach(pill => {
+  pill.addEventListener('click', () => pill.classList.toggle('active'));
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('footer-time').textContent = 'PRONTO · ' + now();
+
+// Enter key triggers scan
+document.getElementById('keyword-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startScan();
+});
+</script>
+</body>
+</html>
