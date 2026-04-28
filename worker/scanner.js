@@ -219,7 +219,7 @@ async function runScan(keywords, env) {
   const trendsResults = [];
   for (const kw of keywords) {
     const result = await fetchGoogleTrends(kw, 'GB');
-    if (result && result.growth >= 5) trendsResults.push(result);
+    if (result && result.growth >= -50) trendsResults.push(result);
     await sleep(8000); // respect rate limits
   }
 
