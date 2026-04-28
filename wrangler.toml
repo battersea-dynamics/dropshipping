@@ -1,0 +1,10 @@
+name = "dropshipping"
+main = "worker/scanner.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "TREND_RADAR_KV"
+id = "938dacf4404f4488977bb0c7d7b23335"
+
+[vars]
+TELEGRAM_CHAT_ID = "8739473584"
