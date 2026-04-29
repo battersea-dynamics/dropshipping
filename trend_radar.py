@@ -41,7 +41,7 @@ TELEGRAM_CHAT_ID   = "8739473584"
 # Soglie di filtraggio
 TRENDS_MIN_GROWTH     = 5
 TRENDS_TIMEFRAME      = "today 3-m"
-TRENDS_GEO            = "IT"
+TRENDS_GEO            = "GB"
 
 # Ore scansione automatica
 SCHEDULE_TIMES        = ["08:00", "20:00"]
@@ -54,14 +54,14 @@ KEYWORDS_FILE         = "keywords.txt"
 
 # Categorie Amazon
 AMAZON_CATEGORIES = {
-    "salute":        "health",
-    "bellezza":      "beauty",
-    "casa":          "kitchen",
-    "sport":         "sporting-goods",
-    "animali":       "pet-supplies",
-    "tech":          "electronics",
-    "giocattoli":    "toys",
-    "abbigliamento": "apparel",
+    "health":   "health",
+    "beauty":   "beauty",
+    "kitchen":  "kitchen",
+    "sport":    "sporting-goods",
+    "pet":      "pet-supplies",
+    "tech":     "electronics",
+    "toys":     "toys",
+    "clothing": "apparel",
 }
 
 # Keyword di default (usate solo se non ne inserisci di nuove)
@@ -187,69 +187,95 @@ class TrendSignal:
 # ══════════════════════════════════════════════════════════════════════
 
 class GoogleTrendsModule:
+    """
+    Uses Google Trends RSS feeds — free, no blocking, no API key needed.
+    Less granular than pytrends but reliable from any server or home IP.
+    Ready to swap to SerpAPI with minimal changes when needed.
+    """
 
-    def __init__(self):
-        self.pytrends = TrendReq(
-            hl="it-IT",
-            tz=60,
-            timeout=(15, 30),
-            retries=3,
-            backoff_factor=1.5,
-        )
+    RSS_URL = "https://trends.google.com/trends/trendingsearches/daily/rss?geo={geo}"
 
     def scan(self, keywords: list[str]) -> list[dict]:
+        """
+        Fetches daily trending searches from Google RSS for UK.
+        Then checks if any of our keywords match the trending topics.
+        """
         results = []
-        groups = [keywords[i:i+5] for i in range(0, len(keywords), 5)]
 
-        for i, group in enumerate(groups):
-            log.info(f"[Trends] Batch {i+1}/{len(groups)}: {group}")
-            try:
-                batch_results = self._scan_batch(group)
-                results.extend(batch_results)
-            except Exception as e:
-                log.warning(f"[Trends] Errore batch {i+1}: {e}")
+        # Fetch UK trending searches
+        trending = self._fetch_trending_rss("GB")
+        log.info(f"[Trends] UK trending topics fetched: {len(trending)}")
 
-            # Pausa tra batch per evitare errore 429
-            if i < len(groups) - 1:
-                log.info("[Trends] Pausa 10s tra batch...")
-                time.sleep(10)
+        # Also fetch IT for future expansion (stored but not used in scoring yet)
+        # trending_it = self._fetch_trending_rss("IT")
+
+        for kw in keywords:
+            match = self._match_keyword(kw, trending)
+            if match:
+                results.append({
+                    "keyword": kw,
+                    "score":   match["traffic"],
+                    "growth":  match["traffic"],
+                    "matched_topic": match["title"]
+                })
+                log.info(f"[Trends] MATCH: '{kw}' → '{match['title']}' (traffic: {match['traffic']})")
+            else:
+                # Still include it with low score so we can see all keywords
+                results.append({
+                    "keyword": kw,
+                    "score":   5,
+                    "growth":  5,
+                    "matched_topic": None
+                })
 
         results.sort(key=lambda x: x["growth"], reverse=True)
-        log.info(
-            f"[Trends] {len(results)} keyword analizzate, "
-            f"{sum(1 for r in results if r['growth'] >= TRENDS_MIN_GROWTH)} sopra soglia"
-        )
+        log.info(f"[Trends] {len(results)} keywords processed, "
+                 f"{sum(1 for r in results if r['growth'] > 5)} matched trending topics")
         return results
 
-    def _scan_batch(self, keywords: list[str]) -> list[dict]:
-        self.pytrends.build_payload(
-            kw_list=keywords,
-            timeframe=TRENDS_TIMEFRAME,
-            geo=TRENDS_GEO
-        )
+    def _fetch_trending_rss(self, geo: str) -> list[dict]:
+        """Fetches and parses the Google Trends RSS feed for a given country."""
+        try:
+            url = self.RSS_URL.format(geo=geo)
+            resp = requests.get(url, timeout=15, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            })
+            resp.raise_for_status()
 
-        iot = self.pytrends.interest_over_time()
-        if iot.empty:
+            # Parse XML
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(resp.content)
+            ns = {"ht": "https://trends.google.com/trends/trendingsearches/daily"}
+
+            trending = []
+            for item in root.findall(".//item"):
+                title_el    = item.find("title")
+                traffic_el  = item.find("ht:approx_traffic", ns)
+                title   = title_el.text.strip()   if title_el   is not None else ""
+                traffic_str = traffic_el.text.strip() if traffic_el is not None else "0"
+
+                # Convert traffic string like "200,000+" to int
+                traffic = int(traffic_str.replace(",", "").replace("+", "").strip() or 0)
+                trending.append({"title": title, "traffic": traffic})
+
+            return trending
+
+        except Exception as e:
+            log.warning(f"[Trends] RSS fetch error for {geo}: {e}")
             return []
 
-        results = []
-        for kw in keywords:
-            if kw not in iot.columns:
-                continue
-            series = iot[kw].dropna()
-            if len(series) < 2:
-                continue
-
-            current     = int(series.iloc[-1])
-            mid         = len(series) // 2
-            past_avg    = int(series.iloc[:mid].mean()) or 1
-            present_avg = int(series.iloc[mid:].mean())
-            growth      = round((present_avg - past_avg) / past_avg * 100)
-
-            results.append({"keyword": kw, "score": current, "growth": growth})
-
-        return results
-
+    def _match_keyword(self, keyword: str, trending: list[dict]) -> Optional[dict]:
+        """
+        Checks if any of our keywords appear in the trending topics.
+        Uses partial matching — 'wireless charger' matches 'Best Wireless Charger 2025'.
+        """
+        kw_tokens = keyword.lower().split()
+        for topic in trending:
+            topic_lower = topic["title"].lower()
+            matches = sum(1 for t in kw_tokens if t in topic_lower)
+            if matches >= max(1, len(kw_tokens) // 2):
+                return topic
+        return None
 
 # ══════════════════════════════════════════════════════════════════════
 #  MODULO 2 — AMAZON MOVERS & SHAKERS
@@ -261,7 +287,7 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
     ),
-    "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Encoding": "gzip, deflate, br",
     "Connection": "keep-alive",
@@ -269,7 +295,7 @@ HEADERS = {
 
 class AmazonModule:
 
-    BASE_URL = "https://www.amazon.it/gp/movers-and-shakers/{category}"
+    BASE_URL = "https://www.amazon.co.uk/gp/movers-and-shakers/{category}"
 
     def build_index(self) -> dict[str, list[dict]]:
         index = {}
@@ -278,7 +304,7 @@ class AmazonModule:
             try:
                 products = self._scrape_category(slug)
                 index[label] = products
-                log.info(f"[Amazon] {label}: {len(products)} prodotti trovati")
+                log.info(f"[Amazon] {label}: {len(products)} products found")
                 time.sleep(4)
             except Exception as e:
                 log.warning(f"[Amazon] Errore categoria {label}: {e}")
@@ -288,19 +314,26 @@ class AmazonModule:
     def find_keyword(self, keyword: str, index: dict) -> Optional[dict]:
         kw_lower = keyword.lower()
         tokens = [t for t in kw_lower.split() if len(t) > 3]
+        
+        best_match = None
+        best_score = 0
 
         for category, products in index.items():
             for product in products:
                 name_lower = product["name"].lower()
                 matches = sum(1 for t in tokens if t in name_lower)
-                if matches >= max(1, len(tokens) // 2):
-                    return {
+                score = matches / len(tokens) if tokens else 0
+                # Require at least 60% of tokens to match
+                if score >= 0.6 and score > best_score:
+                    best_score = score
+                    best_match = {
                         "rank":     product["rank"],
                         "name":     product["name"],
                         "url":      product["url"],
                         "category": category,
                     }
-        return None
+
+        return best_match
 
     def _scrape_category(self, slug: str) -> list[dict]:
         url = self.BASE_URL.format(category=slug)
@@ -491,6 +524,7 @@ class TrendRadarPipeline:
     def _save_results(self, signals: list[TrendSignal], keywords: list[str]) -> None:
         filename = f"radar_results_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
         data = {
+            "status":        "ok",
             "scan_date":     datetime.now().strftime("%d/%m/%Y %H:%M"),
             "keywords_used": keywords,
             "signals": [
@@ -508,9 +542,25 @@ class TrendRadarPipeline:
                 for s in signals
             ]
         }
+
+        # Save locally
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        log.info(f"[Save] Risultati salvati in {filename}")
+        log.info(f"[Save] Local file: {filename}")
+
+        # Push to Cloudflare KV via Worker
+        try:
+            resp = requests.post(
+                "https://dropshipping.battersea-dynamics.workers.dev/api/push",
+                json=data,
+                timeout=15
+            )
+            if resp.status_code == 200:
+                log.info("[Save] Pushed to Cloudflare KV successfully")
+            else:
+                log.warning(f"[Save] Cloudflare push failed: {resp.status_code}")
+        except Exception as e:
+            log.warning(f"[Save] Cloudflare push error: {e}")
 
 
 # ══════════════════════════════════════════════════════════════════════

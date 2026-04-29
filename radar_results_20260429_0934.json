@@ -1,0 +1,157 @@
+{
+  "status": "ok",
+  "scan_date": "29/04/2026 09:34",
+  "keywords_used": [
+    "kids sunscreen spf50",
+    "rechargeable batteries",
+    "travel adapter",
+    "fabric shaver",
+    "flea treatment cats",
+    "vegetable chopper",
+    "hair root powder",
+    "duvet summer",
+    "cat food pouches",
+    "laundry basket"
+  ],
+  "signals": [
+    {
+      "keyword": "kids sunscreen spf50",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 3,
+      "amazon_name": "Garnier Ambre Solaire Kids Sun Spray Hydra Kids SPF50 (150ml), Sunscreen SPF 50, High UVA UVB Protection, Water Resistant, Does Not Stick to Sand, Non-Greasy, Fast Absorbing, Easy Apply",
+      "amazon_url": "https://www.amazon.it/Garnier-Protection-Resistant-Non-Greasy-Absorption/dp/B0DGGDQVZV/ref=zg_bsms_g_beauty_d_sccl_3/524-2377237-3448660?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "rechargeable batteries",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 2,
+      "amazon_name": "Granicell AA 2800mAh NiMH Rechargeable Batteries, 1300 Cycles, 1.2V, Low Self-Discharge, 4-Pack",
+      "amazon_url": "https://www.amazon.it/Granicell-2800mAh-Rechargeable-Batteries-Self-Discharge/dp/B0DX252LC3/ref=zg_bsms_g_electronics_d_sccl_2/522-6247505-1674530?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "travel adapter",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 4,
+      "amazon_name": "TESSAN Universal Travel Adapter, Travel Plug Adapter Worldwide with 1 Universal AC Outlet 4 USB Ports (2 USB C), International Plug Adaptor for UK to Europe USA Australia (Type C G A I) Grey White",
+      "amazon_url": "https://www.amazon.it/TESSAN-Universal-Worldwide-International-Australia/dp/B0DRCN8TX7/ref=zg_bsms_g_electronics_d_sccl_4/522-6247505-1674530?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "fabric shaver",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 5,
+      "amazon_name": "Philips Fabric Shaver – Fast Pill Removal, 8800 RPM, Large Blade Surface, 3 Mesh Hole Sizes, Safe on All Fabrics, Easy Clean Container, 2 AA Batteries, Compact Design (GC026/80)",
+      "amazon_url": "https://www.amazon.it/Philips-Fabric-effective-removal-bobbles/dp/B07M8J529S/ref=zg_bsms_g_kitchen_d_sccl_5/521-3811243-2071968?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "flea treatment cats",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 1,
+      "amazon_name": "FRONTLINE Spot On Flea & Tick Treatment for Cats - 3 Pipettes",
+      "amazon_url": "https://www.amazon.it/FRONTLINE-Spot-Flea-Treatment-Pipettes/dp/B005MPILIQ/ref=zg_bsms_g_pet-supplies_d_sccl_1/524-2372396-2442242?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "vegetable chopper",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 3,
+      "amazon_name": "Fullstar Vegetable Chopper & Mandoline Slicer - Julienne Cutter Dicer Grater for Food Veg Onion Cucumber Tomato Salad Potato Cheese - Kitchen Gadgets & Accessories (Compact 6-in-1, White)",
+      "amazon_url": "https://www.amazon.it/Vegetable-Chopper-Kitchen-Mandoline-Slicer/dp/B0BWN548V2/ref=zg_bsms_g_kitchen_d_sccl_3/521-3811243-2071968?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "hair root powder",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 2,
+      "amazon_name": "BOLDIFY Hairline Powder - Root Touch Up Hair Color for Gray Coverage - Bald Spot Concealing Hair Powder for Women and Men - 24-Hour Stain-Proof - Ash Brown",
+      "amazon_url": "https://www.amazon.it/BOLDIFY-Hairline-Powder-Stain-Proof-Alternative/dp/B0B4KL2XCC/ref=zg_bsms_g_beauty_d_sccl_2/524-2377237-3448660?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "duvet summer",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 4,
+      "amazon_name": "Quality Beddings Double Duvet 1.5 Tog | Breathable Duvets for Summer Hot Nights | Anti-allergy Duvet Double with Hollowfibre Filling | Hypoallergenic UK-Made Quilt (Double, 200x200cm)",
+      "amazon_url": "https://www.amazon.it/Anti-allergy-Hypoallergenic-Hollowfiber-Breathable-Quality/dp/B0DC3WB7DP/ref=zg_bsms_g_kitchen_d_sccl_4/521-3811243-2071968?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "laundry basket",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 2,
+      "amazon_name": "SAMMART 42L Collapsible Plastic Laundry Basket - Foldable Pop Up Storage Container/Organizer - Portable Washing Tub - Space Saving Hamper/Basket (Grey, 1)",
+      "amazon_url": "https://www.amazon.it/SAMMART-Collapsible-Plastic-Laundry-Basket/dp/B07R15QNMX/ref=zg_bsms_g_kitchen_d_sccl_2/521-3811243-2071968?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 09:33"
+    },
+    {
+      "keyword": "cat food pouches",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:33"
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "status": "ok",
+  "scan_date": "29/04/2026 07:14",
+  "keywords_used": [
+    "bone conduction headphones",
+    "wireless charger",
+    "posture corrector",
+    "led face mask",
+    "cat water fountain",
+    "mini dehumidifier",
+    "massage gun",
+    "resistance bands"
+  ],
+  "signals": [
+    {
+      "keyword": "led face mask",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 5,
+      "amazon_name": "BIODANCE Hydro Cera-nol Real Deep Face Mask 4 Pcs | Hydrogel Overnight Mask | Soothing, Moisturising and Nutritious Care | Korean Face Mask for Glass Skin | Korean Skincare",
+      "amazon_url": "https://www.amazon.it/BIODANCE-Cera-nol-Hydrogel-Moisturising-Nutritious/dp/B0CWGSP1WY/ref=zg_bsms_g_beauty_d_sccl_5/521-0198312-0160246?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 07:13"
+    },
+    {
+      "keyword": "bone conduction headphones",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 07:13"
+    },
+    {
+      "keyword": "wireless charger",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 07:13"
+    },
+    {
+      "keyword": "posture corrector",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 07:13"
+    },
+    {
+      "keyword": "cat water fountain",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 07:13"
+    },
+    {
+      "keyword": "mini dehumidifier",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 07:13"
+    },
+    {
+      "keyword": "massage gun",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 07:13"
+    },
+    {
+      "keyword": "resistance bands",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 07:13"
+    }
+  ]
+}

@@ -47,6 +47,24 @@ export default {
       return new Response('{"status":"saved"}', { headers });
     }
 
+    // DEBUG — remove after testing
+    if (url.pathname === '/api/debug') {
+      const result = await fetchGoogleTrends('wireless charger', 'GB');
+      return new Response(JSON.stringify(result), { headers });
+    }
+    // POST /api/push → receive results from Python and store in KV
+    if (url.pathname === '/api/push' && request.method === 'POST') {
+      const body = await request.json();
+      await env.TREND_RADAR_KV.put('latest_scan', JSON.stringify(body));
+      return new Response('{"status":"saved"}', { headers });
+    }
+
+    // DEBUG — remove after testing
+    if (url.pathname === '/api/debug') {
+      const result = await fetchGoogleTrends('wireless charger', 'GB');
+      return new Response(JSON.stringify(result), { headers });
+    }
+
     return new Response('Trend Radar API running', { headers });
   },
 

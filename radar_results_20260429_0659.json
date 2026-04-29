@@ -1,0 +1,124 @@
+{
+  "status": "ok",
+  "scan_date": "29/04/2026 06:59",
+  "keywords_used": [
+    "bone conduction headphones",
+    "wireless charger",
+    "posture corrector",
+    "led face mask",
+    "cat water fountain",
+    "mini dehumidifier",
+    "massage gun",
+    "resistance bands"
+  ],
+  "signals": [
+    {
+      "keyword": "wireless charger",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 10,
+      "amazon_name": "Power Bank Magnetico 10000mAh, Wireless Caricatore 20W Ricarica Rapida Powerbank, Magnetico Caricatore Inalámbricos Portatile Batteria Esterna per iPhone 17 16 15 14 13 12 Pro Max Mini Plus Samsung",
+      "amazon_url": "https://www.amazon.it/Magnetico-Caricatore-Powerbank-Inal%C3%A1mbricos-Portatile/dp/B0GW819S6J/ref=zg_bsms_g_electronics_d_sccl_10/524-1390954-5661151?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 06:58"
+    },
+    {
+      "keyword": "led face mask",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 12,
+      "amazon_name": "medicube Collagen Night Wrapping Mask - Maschera Collagene Viso Notturna, Idratazione e Incarnato Radioso, Effetto Rimpolpante - Skincare Coreana, 75 ml",
+      "amazon_url": "https://www.amazon.it/Medicube-Collagen-Night-Wrapping-Facial/dp/B0BRMYHMS5/ref=zg_bsms_g_beauty_d_sccl_12/522-0930508-6001019?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 06:58"
+    },
+    {
+      "keyword": "cat water fountain",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 5,
+      "amazon_name": "Sanlebi Magic Aqua Celz - Set di 10 ricariche in gel, contiene 8 bottiglie di gel colorato, Magic Water elf per bambini 4 5 6+, compleanno, Natale, Pasqua, regalo per ragazzi e ragazze",
+      "amazon_url": "https://www.amazon.it/Sanlebi-Magic-Aqua-Celz-compleanno/dp/B0FFFRL8F6/ref=zg_bsms_g_toys_d_sccl_5/524-2089185-2723204?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 06:58"
+    },
+    {
+      "keyword": "mini dehumidifier",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": 4,
+      "amazon_name": "Dove Deodorante Spray Advanced Care 0% Go Fresh Cetriolo, Senza Alcol e Sali di Alluminio, Formula Idratante e Delicata, Pelle Asciutta Fino a 48 Ore, Deodorante Uomo e Donna, 6 Pezzi da 150ml",
+      "amazon_url": "https://www.amazon.it/Dove-Deodorante-Advanced-Alluminio-Idratante/dp/B0C1CPVJM7/ref=zg_bsms_g_beauty_d_sccl_4/522-0930508-6001019?psc=1",
+      "sources": [
+        "Google Trends",
+        "Amazon M&S"
+      ],
+      "strength": "MEDIO",
+      "detected_at": "29/04/2026 06:58"
+    },
+    {
+      "keyword": "bone conduction headphones",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 06:58"
+    },
+    {
+      "keyword": "posture corrector",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 06:58"
+    },
+    {
+      "keyword": "massage gun",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 06:58"
+    },
+    {
+      "keyword": "resistance bands",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 06:58"
+    }
+  ]
+}

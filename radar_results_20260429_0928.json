@@ -1,0 +1,148 @@
+{
+  "status": "ok",
+  "scan_date": "29/04/2026 09:28",
+  "keywords_used": [
+    "kids sunscreen spf50",
+    "rechargeable batteries",
+    "travel adapter",
+    "fabric shaver",
+    "flea treatment cats",
+    "vegetable chopper",
+    "hair root powder",
+    "duvet summer",
+    "cat food pouches",
+    "laundry basket"
+  ],
+  "signals": [
+    {
+      "keyword": "kids sunscreen spf50",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "rechargeable batteries",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "travel adapter",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "fabric shaver",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "flea treatment cats",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "vegetable chopper",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "hair root powder",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "duvet summer",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "cat food pouches",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    },
+    {
+      "keyword": "laundry basket",
+      "trends_score": 5,
+      "trends_growth": 5,
+      "amazon_rank": null,
+      "amazon_name": null,
+      "amazon_url": null,
+      "sources": [
+        "Google Trends"
+      ],
+      "strength": "DEBOLE",
+      "detected_at": "29/04/2026 09:28"
+    }
+  ]
+}
