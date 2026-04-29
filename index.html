@@ -471,7 +471,7 @@ function renderTrendList(signals) {
       <div class="trend-row" onclick="focusSignal(${i})">
         <div class="trend-rank">${i+1}</div>
         <div class="trend-name">
-          ${s.keyword}
+          ${s.keyword.slice(0, 60)}${s.keyword.length > 60 ? '...' : ''}
           <small>${s.sources.join(' + ')}</small>
         </div>
         <div class="trend-score" style="color:${scoreColor}">
@@ -586,7 +586,7 @@ function renderAlerts(signals) {
       <div class="alert-icon">${icon}</div>
       <div>
         <div class="alert-text ${isForte ? 'hot' : ''}">
-          <strong>${s.keyword}</strong> — +${s.trends_growth}% su Google Trends
+          <strong>${s.keyword.slice(0, 60)}${s.keyword.length > 60 ? '...' : ''}</strong> — ${s.amazon_rank ? 'Amazon M&S #' + s.amazon_rank : 'Google Trends only'}
           ${amazonLine}${amazonLink}
         </div>
         <div class="alert-time">${s.detected_at || '—'}</div>
