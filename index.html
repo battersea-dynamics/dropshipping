@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TREND RADAR — Prodotti di Nicchia</title>
+<title>TREND RADAR — UK Dropshipping Intelligence</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
 
@@ -54,7 +54,6 @@
   .logo-tag { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 3px; margin-bottom: 4px; }
   h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
   h1 span { color: var(--accent); }
-
   .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 
   .live-badge {
@@ -70,10 +69,7 @@
 
   .scan-info { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
 
-  /* CONTROLS */
-  .controls {
-    display: flex; gap: 12px; margin-bottom: 20px; align-items: stretch;
-  }
+  .controls { display: flex; gap: 12px; margin-bottom: 20px; align-items: stretch; }
 
   .refresh-btn {
     background: var(--accent); color: #000; border: none;
@@ -85,26 +81,14 @@
   .refresh-btn:hover { background: #00cc6e; }
   .refresh-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
 
-  .run-btn {
-    background: transparent; color: var(--accent);
-    border: 1px solid var(--accent);
-    padding: 12px 24px; font-family: 'Syne', sans-serif;
-    font-weight: 700; font-size: 13px; letter-spacing: 1px;
-    cursor: pointer; text-transform: uppercase; transition: all .2s;
-    white-space: nowrap;
-  }
-  .run-btn:hover { background: rgba(0,255,136,0.08); }
-
   .auto-refresh-wrap {
     display: flex; align-items: center; gap: 10px;
     padding: 0 16px;
     border: 1px solid var(--border);
     font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);
   }
-
   .auto-refresh-wrap input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
 
-  /* STATUS */
   .status-bar {
     background: var(--surface); border: 1px solid var(--border);
     padding: 10px 16px; margin-bottom: 24px;
@@ -114,7 +98,6 @@
   .status-bar span { color: var(--accent); }
   .status-bar .err { color: var(--hot); }
 
-  /* EMPTY / LOADING */
   .state-panel {
     background: var(--surface); border: 1px solid var(--border);
     padding: 60px 40px; text-align: center; margin-bottom: 24px;
@@ -128,7 +111,6 @@
     font-size: 12px; color: var(--accent); letter-spacing: 1px;
   }
 
-  /* METRICS */
   .metrics-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
   .metric-card { background: var(--surface); border: 1px solid var(--border); padding: 16px; }
   .metric-label { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
@@ -138,7 +120,6 @@
   .metric-value.yellow{ color: var(--warm); }
   .metric-sub { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); margin-top: 4px; }
 
-  /* GRID */
   .results-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
 
   .panel { background: var(--surface); border: 1px solid var(--border); }
@@ -149,7 +130,6 @@
   .panel-title { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
   .panel-meta  { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); }
 
-  /* TREND TABLE */
   .trend-row {
     display: grid; grid-template-columns: 24px 1fr 80px 80px 60px;
     gap: 12px; padding: 14px 18px;
@@ -162,44 +142,39 @@
   .trend-name small { display: block; font-size: 10px; color: var(--muted); font-weight: 400; margin-top: 2px; font-family: 'Space Mono', monospace; }
   .trend-score { font-family: 'Space Mono', monospace; font-size: 12px; text-align: right; }
   .trend-change { font-family: 'Space Mono', monospace; font-size: 12px; text-align: right; font-weight: 700; }
-  .trend-change.forte { color: var(--accent); }
-  .trend-change.medio { color: var(--warm); }
-  .trend-change.debole{ color: var(--muted); }
+  .trend-change.strong { color: var(--accent); }
+  .trend-change.medium { color: var(--warm); }
+  .trend-change.weak   { color: var(--muted); }
 
   .signal-dots { display: flex; gap: 4px; justify-content: flex-end; }
   .sdot { width: 6px; height: 6px; border-radius: 1px; background: var(--border); }
   .sdot.amazon { background: var(--accent); }
-  .sdot.trends  { background: var(--warm); }
+  .sdot.trends { background: var(--warm); }
 
-  /* SPARKLINE */
   .sparkline-wrap { padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
   .spark-label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; }
   canvas { display: block; }
 
-  /* BAR CHART */
   .bar-chart { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
   .bar-row { display: grid; grid-template-columns: 100px 1fr 50px; gap: 10px; align-items: center; }
   .bar-label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
   .bar-track { height: 4px; background: var(--border); overflow: hidden; }
   .bar-fill { height: 100%; background: var(--accent); transition: width 1s ease; }
-  .bar-fill.confirmed { background: var(--accent); }
+  .bar-fill.confirmed   { background: var(--accent); }
   .bar-fill.unconfirmed { background: var(--warm); }
   .bar-pct { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); text-align: right; }
 
-  /* RIGHT COL */
   .right-col { display: flex; flex-direction: column; gap: 16px; }
 
-  /* KEYWORDS PANEL */
-  .kw-list { padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 8px; }
-  .kw-tag {
+  .cat-list { padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .cat-tag {
     padding: 4px 10px;
     border: 1px solid var(--border);
     font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted);
     letter-spacing: 1px;
   }
-  .kw-tag.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.06); }
+  .cat-tag.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.06); }
 
-  /* ALERT FEED */
   .alert-item { padding: 12px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; gap: 10px; }
   .alert-icon { font-size: 14px; margin-top: 2px; flex-shrink: 0; }
   .alert-text { font-size: 12px; line-height: 1.5; }
@@ -228,103 +203,103 @@
 
   <header>
     <div class="logo">
-      <div class="logo-tag">◈ DATI REALI — LIVE</div>
+      <div class="logo-tag">◈ LIVE — REAL DATA</div>
       <h1>TREND <span>RADAR</span></h1>
     </div>
     <div class="header-right">
-      <div class="live-badge"><div class="pulse"></div>CONNESSO AL SERVER</div>
+      <div class="live-badge"><div class="pulse"></div>CONNECTED</div>
       <div class="scan-info" id="scan-info">—</div>
     </div>
   </header>
 
   <div class="controls">
-    <button class="refresh-btn" id="refresh-btn" onclick="loadData()">↻ AGGIORNA DATI</button>
+    <button class="refresh-btn" id="refresh-btn" onclick="loadData()">↻ REFRESH DATA</button>
     <div class="auto-refresh-wrap">
       <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
       <label for="auto-refresh">Auto-refresh 60s</label>
     </div>
     <div style="flex:1;"></div>
     <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);display:flex;align-items:center;padding:0 16px;border:1px solid var(--border);">
-      Per nuova scansione: <span style="color:var(--accent);margin-left:8px;">python trend_radar.py</span>
+      New scan: <span style="color:var(--accent);margin-left:8px;">python trend_radar.py</span>
     </div>
   </div>
 
   <div class="status-bar" id="status-bar">
-    <span>STATO:</span> Caricamento... &nbsp;|&nbsp;
-    <span>FILE:</span> — &nbsp;|&nbsp;
-    <span>SEGNALI:</span> 0
+    <span>STATUS:</span> Loading... &nbsp;|&nbsp;
+    <span>SCAN:</span> — &nbsp;|&nbsp;
+    <span>PRODUCTS:</span> 0
   </div>
 
-  <!-- STATO VUOTO -->
+  <!-- EMPTY STATE -->
   <div class="state-panel" id="empty-state" style="display:none;">
-    <h3>Nessuna scansione trovata</h3>
-    <p>Esegui prima una scansione con trend_radar.py,<br>poi torna qui e clicca Aggiorna Dati.</p>
+    <h3>No scan data found</h3>
+    <p>Run a scan first, then click Refresh Data.</p>
     <code>python trend_radar.py</code>
   </div>
 
-  <!-- STATO ERRORE -->
+  <!-- ERROR STATE -->
   <div class="state-panel" id="error-state" style="display:none;">
-    <h3 style="color:var(--hot);">Errore di connessione</h3>
-    <p>Impossibile connettersi al server locale.<br>Assicurati che server.py sia in esecuzione.</p>
-    <code>python server.py</code>
+    <h3 style="color:var(--hot);">Connection error</h3>
+    <p>Could not connect to the API.<br>Check that the Worker is deployed correctly.</p>
+    <code>wrangler deploy</code>
   </div>
 
-  <!-- METRICHE -->
+  <!-- METRICS -->
   <div class="metrics-row" id="metrics-row" style="display:none;">
     <div class="metric-card">
-      <div class="metric-label">Keyword Monitorate</div>
+      <div class="metric-label">Products Found</div>
       <div class="metric-value green" id="m-keywords">0</div>
-      <div class="metric-sub">in questa scansione</div>
+      <div class="metric-sub">this scan</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Segnali Rilevati</div>
+      <div class="metric-label">Strong Signals</div>
       <div class="metric-value green" id="m-signals">0</div>
-      <div class="metric-sub">sopra soglia</div>
+      <div class="metric-sub">rank 1–5</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Confermati Amazon</div>
+      <div class="metric-label">Amazon M&S</div>
       <div class="metric-value red" id="m-amazon">0</div>
-      <div class="metric-sub">su Movers & Shakers</div>
+      <div class="metric-sub">confirmed trending</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Crescita Media</div>
+      <div class="metric-label">Categories</div>
       <div class="metric-value yellow" id="m-avg">—</div>
-      <div class="metric-sub">Google Trends %</div>
+      <div class="metric-sub">scanned</div>
     </div>
   </div>
 
-  <!-- GRIGLIA RISULTATI -->
+  <!-- RESULTS GRID -->
   <div class="results-grid" id="results-grid" style="display:none;">
 
     <div>
-      <!-- TABELLA TREND -->
+      <!-- PRODUCT TABLE -->
       <div class="panel" style="margin-bottom:16px;">
         <div class="panel-header">
-          <div class="panel-title">◈ SEGNALI REALI — CLASSIFICA</div>
+          <div class="panel-title">◈ TRENDING PRODUCTS — AMAZON UK M&S</div>
           <div class="panel-meta" id="table-meta">—</div>
         </div>
         <div class="trend-row" style="opacity:.4;cursor:default;padding:8px 18px;">
           <div></div>
-          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);">KEYWORD</div>
-          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;">TRENDS SCORE</div>
-          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;">CRESCITA</div>
-          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;">FONTI</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);">PRODUCT</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;">RANK</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;">SIGNAL</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:right;">SOURCE</div>
         </div>
         <div id="trend-list"></div>
       </div>
 
-      <!-- SPARKLINE -->
+      <!-- CHART -->
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">◈ DISTRIBUZIONE SEGNALI</div>
+          <div class="panel-title">◈ SIGNAL DISTRIBUTION</div>
           <div class="panel-meta" id="spark-label">—</div>
         </div>
         <div class="sparkline-wrap">
-          <div class="spark-label">CRESCITA % PER KEYWORD (Google Trends)</div>
+          <div class="spark-label">PRODUCTS BY RANK POSITION</div>
           <canvas id="sparkline" height="80"></canvas>
         </div>
         <div class="panel-header">
-          <div class="panel-title">◈ CONFERME PER FONTE</div>
+          <div class="panel-title">◈ SOURCES CONFIRMED</div>
         </div>
         <div class="bar-chart" id="source-bars"></div>
       </div>
@@ -332,20 +307,20 @@
 
     <div class="right-col">
 
-      <!-- KEYWORD USATE -->
+      <!-- CATEGORIES -->
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">◈ KEYWORD MONITORATE</div>
-          <div class="panel-meta" id="kw-count">—</div>
+          <div class="panel-title">◈ CATEGORIES SCANNED</div>
+          <div class="panel-meta" id="cat-count">—</div>
         </div>
-        <div class="kw-list" id="kw-list"></div>
+        <div class="cat-list" id="cat-list"></div>
       </div>
 
       <!-- ALERT FEED -->
       <div class="panel" style="flex:1;">
         <div class="panel-header">
           <div class="panel-title">◈ ALERT FEED</div>
-          <div class="panel-meta" id="alert-count">0 alert</div>
+          <div class="panel-meta" id="alert-count">0 alerts</div>
         </div>
         <div id="alert-feed"></div>
       </div>
@@ -354,7 +329,7 @@
   </div>
 
   <footer>
-    <span>TREND RADAR — DATI REALI © 2025</span>
+    <span>TREND RADAR v2 — UK DROPSHIPPING INTELLIGENCE</span>
     <span id="footer-time">—</span>
   </footer>
 
@@ -366,18 +341,22 @@ let currentSignals = [];
 let autoRefreshTimer = null;
 
 function nowStr() {
-  return new Date().toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  return new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
 }
 
-// ── LOAD DATA FROM SERVER ─────────────────────────────────────────────────────
+function truncate(str, n) {
+  return str.length > n ? str.slice(0, n) + '...' : str;
+}
+
+// ── LOAD DATA ─────────────────────────────────────────────────────────────────
 async function loadData() {
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true;
-  btn.textContent = '↻ CARICAMENTO...';
+  btn.textContent = '↻ LOADING...';
 
   try {
     const resp = await fetch('/api/results');
-    if (!resp.ok) throw new Error('Server non raggiungibile');
+    if (!resp.ok) throw new Error('Could not reach API');
     const data = await resp.json();
 
     if (data.status === 'empty') {
@@ -390,64 +369,60 @@ async function loadData() {
   } catch (e) {
     showState('error');
     document.getElementById('status-bar').innerHTML =
-      `<span class="err">ERRORE:</span> ${e.message} — Assicurati che server.py sia attivo`;
+      `<span class="err">ERROR:</span> ${e.message}`;
   }
 
   btn.disabled = false;
-  btn.textContent = '↻ AGGIORNA DATI';
-  document.getElementById('footer-time').textContent = 'AGGIORNATO: ' + nowStr();
+  btn.textContent = '↻ REFRESH DATA';
+  document.getElementById('footer-time').textContent = 'UPDATED: ' + nowStr();
 }
 
 function showState(state) {
-  document.getElementById('empty-state').style.display  = state === 'empty'  ? 'block' : 'none';
-  document.getElementById('error-state').style.display  = state === 'error'  ? 'block' : 'none';
-  document.getElementById('metrics-row').style.display  = state === 'ok'     ? 'grid'  : 'none';
-  document.getElementById('results-grid').style.display = state === 'ok'     ? 'grid'  : 'none';
+  document.getElementById('empty-state').style.display  = state === 'empty' ? 'block' : 'none';
+  document.getElementById('error-state').style.display  = state === 'error' ? 'block' : 'none';
+  document.getElementById('metrics-row').style.display  = state === 'ok'    ? 'grid'  : 'none';
+  document.getElementById('results-grid').style.display = state === 'ok'    ? 'grid'  : 'none';
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function renderAll(data) {
   currentSignals = data.signals || [];
-  const keywords = data.keywords_used || [];
 
   showState('ok');
 
   // Status bar
   document.getElementById('status-bar').innerHTML =
-    `<span>STATO:</span> OK &nbsp;|&nbsp;
-     <span>FILE:</span> ${data.source_file || '—'} &nbsp;|&nbsp;
-     <span>SCANSIONE:</span> ${data.scan_date || '—'} &nbsp;|&nbsp;
-     <span>SEGNALI:</span> ${currentSignals.length}`;
+    `<span>STATUS:</span> OK &nbsp;|&nbsp;
+     <span>SCAN:</span> ${data.scan_date || '—'} &nbsp;|&nbsp;
+     <span>PRODUCTS:</span> ${currentSignals.length}`;
 
-  document.getElementById('scan-info').textContent =
-    `ultima scan: ${data.scan_date || '—'}`;
+  document.getElementById('scan-info').textContent = `last scan: ${data.scan_date || '—'}`;
 
-  // Metriche
-  const confirmed = currentSignals.filter(s => s.amazon_rank).length;
-  const avgGrowth = currentSignals.length
-    ? Math.round(currentSignals.reduce((s, x) => s + x.trends_growth, 0) / currentSignals.length)
-    : 0;
+  // Metrics
+  const strong     = currentSignals.filter(s => s.strength === 'STRONG').length;
+  const confirmed  = currentSignals.filter(s => s.amazon_rank).length;
+  const categories = [...new Set(currentSignals.map(s => s.category).filter(Boolean))];
 
-  document.getElementById('m-keywords').textContent = keywords.length;
-  document.getElementById('m-signals').textContent  = currentSignals.length;
+  document.getElementById('m-keywords').textContent = currentSignals.length;
+  document.getElementById('m-signals').textContent  = strong;
   document.getElementById('m-amazon').textContent   = confirmed;
-  document.getElementById('m-avg').textContent      = avgGrowth + '%';
-  document.getElementById('table-meta').textContent = `${currentSignals.length} segnali · ${data.scan_date}`;
+  document.getElementById('m-avg').textContent      = categories.length || '—';
+  document.getElementById('table-meta').textContent = `${currentSignals.length} products · ${data.scan_date}`;
 
-  renderKeywords(keywords, currentSignals);
+  renderCategories(categories);
   renderTrendList(currentSignals);
   renderSparkline(currentSignals);
   renderSourceBars(currentSignals);
   renderAlerts(currentSignals);
 }
 
-function renderKeywords(keywords, signals) {
-  const hotKeywords = new Set(signals.map(s => s.keyword));
-  const container = document.getElementById('kw-list');
-  container.innerHTML = keywords.map(kw =>
-    `<div class="kw-tag ${hotKeywords.has(kw) ? 'active' : ''}">${kw}</div>`
+function renderCategories(categories) {
+  const all = ['health','beauty','kitchen','sport','pet','tech','toys','clothing'];
+  const container = document.getElementById('cat-list');
+  container.innerHTML = all.map(c =>
+    `<div class="cat-tag ${categories.includes(c) ? 'active' : ''}">${c}</div>`
   ).join('');
-  document.getElementById('kw-count').textContent = keywords.length + ' keyword';
+  document.getElementById('cat-count').textContent = `${categories.length} active`;
 }
 
 function renderTrendList(signals) {
@@ -455,31 +430,28 @@ function renderTrendList(signals) {
   list.innerHTML = '';
 
   if (!signals.length) {
-    list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px;">Nessun segnale sopra soglia</div>';
+    list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px;">No products found. Run a scan.</div>';
     return;
   }
 
   signals.forEach((s, i) => {
-    const strengthClass = s.strength === 'FORTE' ? 'forte' : s.strength === 'MEDIO' ? 'medio' : 'debole';
-    const scoreColor = s.trends_score > 60 ? 'var(--accent)' : s.trends_score > 30 ? 'var(--warm)' : 'var(--text)';
-
-    // Punti segnale: 1 per trends, 1 per amazon
-    const hasTrends = true;
+    const strengthClass = s.strength === 'STRONG' ? 'strong' : s.strength === 'MEDIUM' ? 'medium' : 'weak';
+    const rankColor = s.amazon_rank <= 5 ? 'var(--accent)' : s.amazon_rank <= 15 ? 'var(--warm)' : 'var(--text)';
     const hasAmazon = !!s.amazon_rank;
 
     list.innerHTML += `
       <div class="trend-row" onclick="focusSignal(${i})">
         <div class="trend-rank">${i+1}</div>
         <div class="trend-name">
-          ${s.keyword.slice(0, 60)}${s.keyword.length > 60 ? '...' : ''}
-          <small>${s.sources.join(' + ')}</small>
+          ${truncate(s.keyword, 55)}
+          <small>${s.category || ''} · ${s.sources.join(' + ')}</small>
         </div>
-        <div class="trend-score" style="color:${scoreColor}">
-          ${s.trends_score}<span style="color:var(--muted);font-size:9px;">/100</span>
+        <div class="trend-score" style="color:${rankColor}">
+          #${s.amazon_rank || '—'}
         </div>
-        <div class="trend-change ${strengthClass}">+${s.trends_growth}%</div>
+        <div class="trend-change ${strengthClass}">${s.strength}</div>
         <div class="signal-dots">
-          <div class="sdot ${hasTrends ? 'trends' : ''}"></div>
+          <div class="sdot trends"></div>
           <div class="sdot ${hasAmazon ? 'amazon' : ''}"></div>
         </div>
       </div>`;
@@ -487,7 +459,7 @@ function renderTrendList(signals) {
 }
 
 function focusSignal(idx) {
-  document.getElementById('spark-label').textContent = currentSignals[idx].keyword;
+  document.getElementById('spark-label').textContent = truncate(currentSignals[idx].keyword, 40);
 }
 
 function renderSparkline(signals) {
@@ -497,105 +469,92 @@ function renderSparkline(signals) {
   const w = canvas.width, h = canvas.height, pad = 8;
 
   ctx.clearRect(0, 0, w, h);
-
   if (!signals.length) return;
 
-  const values = signals.map(s => s.trends_growth);
-  const maxV = Math.max(...values, 1);
-  const barW = Math.max(8, (w - pad * 2) / values.length - 4);
+  const maxRank = Math.max(...signals.map(s => s.amazon_rank || 1), 1);
+  const barW    = Math.max(4, (w - pad * 2) / signals.length - 2);
 
   signals.forEach((s, i) => {
-    const x = pad + i * ((w - pad * 2) / values.length);
-    const barH = Math.max(2, (s.trends_growth / maxV) * (h - pad * 2));
-    const y = h - pad - barH;
+    const x      = pad + i * ((w - pad * 2) / signals.length);
+    const ratio  = s.amazon_rank ? 1 - (s.amazon_rank / (maxRank + 1)) : 0.1;
+    const barH   = Math.max(2, ratio * (h - pad * 2 - 16));
+    const y      = h - pad - barH - 12;
 
-    ctx.fillStyle = s.amazon_rank ? '#00ff88' : '#ffaa00';
+    ctx.fillStyle = s.strength === 'STRONG' ? '#00ff88' : s.strength === 'MEDIUM' ? '#ffaa00' : '#2a2a3a';
     ctx.fillRect(x, y, barW, barH);
-
-    // Label
-    if (signals.length <= 8) {
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.font = '9px Space Mono';
-      ctx.textAlign = 'center';
-      ctx.fillText('+' + s.trends_growth + '%', x + barW/2, y - 4);
-    }
   });
 
-  // Legenda
-  ctx.fillStyle = '#00ff88'; ctx.fillRect(pad, h - pad + 4, 8, 4);
-  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '9px Space Mono';
+  // Legend
+  ctx.fillStyle = '#00ff88'; ctx.fillRect(pad, h - 10, 8, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '9px monospace';
   ctx.textAlign = 'left';
-  ctx.fillText('confermato Amazon', pad + 12, h - pad + 9);
-  ctx.fillStyle = '#ffaa00'; ctx.fillRect(pad + 140, h - pad + 4, 8, 4);
+  ctx.fillText('Strong', pad + 12, h - 6);
+  ctx.fillStyle = '#ffaa00'; ctx.fillRect(pad + 70, h - 10, 8, 4);
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.fillText('solo Google Trends', pad + 152, h - pad + 9);
+  ctx.fillText('Medium', pad + 82, h - 6);
 
-  document.getElementById('spark-label').textContent =
-    signals[0] ? signals[0].keyword : '—';
+  document.getElementById('spark-label').textContent = signals[0] ? truncate(signals[0].keyword, 40) : '—';
 }
 
 function renderSourceBars(signals) {
-  const container = document.getElementById('source-bars');
-  const total = signals.length || 1;
-  const googleCount = signals.length; // tutti hanno google trends
-  const amazonCount = signals.filter(s => s.amazon_rank).length;
+  const total   = signals.length || 1;
+  const amazon  = signals.filter(s => s.amazon_rank).length;
 
-  container.innerHTML = `
-    <div class="bar-row">
-      <div class="bar-label">Google Trends</div>
-      <div class="bar-track"><div class="bar-fill confirmed" style="width:${(googleCount/total*100)}%"></div></div>
-      <div class="bar-pct">${googleCount}/${total}</div>
-    </div>
+  document.getElementById('source-bars').innerHTML = `
     <div class="bar-row">
       <div class="bar-label">Amazon M&S</div>
-      <div class="bar-track"><div class="bar-fill ${amazonCount > 0 ? 'confirmed' : 'unconfirmed'}" style="width:${(amazonCount/total*100)}%"></div></div>
-      <div class="bar-pct">${amazonCount}/${total}</div>
+      <div class="bar-track"><div class="bar-fill confirmed" style="width:${amazon/total*100}%"></div></div>
+      <div class="bar-pct">${amazon}/${total}</div>
     </div>
     <div class="bar-row">
       <div class="bar-label">Reddit</div>
       <div class="bar-track"><div class="bar-fill unconfirmed" style="width:0%"></div></div>
-      <div class="bar-pct">presto</div>
+      <div class="bar-pct">coming soon</div>
     </div>
     <div class="bar-row">
       <div class="bar-label">TikTok</div>
       <div class="bar-track"><div class="bar-fill unconfirmed" style="width:0%"></div></div>
-      <div class="bar-pct">presto</div>
+      <div class="bar-pct">coming soon</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">eBay</div>
+      <div class="bar-track"><div class="bar-fill unconfirmed" style="width:0%"></div></div>
+      <div class="bar-pct">coming soon</div>
     </div>`;
 }
 
 function renderAlerts(signals) {
   const feed = document.getElementById('alert-feed');
+
   if (!signals.length) {
-    feed.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px;">Nessun alert. Esegui una scansione.</div>';
-    document.getElementById('alert-count').textContent = '0 alert';
+    feed.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px;">No alerts. Run a scan first.</div>';
+    document.getElementById('alert-count').textContent = '0 alerts';
     return;
   }
 
-  let html = '';
-  signals.forEach(s => {
-    const isForte = s.strength === 'FORTE';
-    const icon = isForte ? '🔥' : '📈';
-    const amazonLine = s.amazon_rank
-      ? `<br>✅ Amazon M&S: <strong>#${s.amazon_rank}</strong> — ${s.amazon_name}`
-      : '';
-    const amazonLink = s.amazon_url
-      ? `<br><a href="${s.amazon_url}" target="_blank">→ Vedi su Amazon</a>`
-      : '';
+  const strong = signals.filter(s => s.strength === 'STRONG');
+  const medium = signals.filter(s => s.strength === 'MEDIUM');
+  const toShow = [...strong, ...medium].slice(0, 15);
 
-    html += `<div class="alert-item">
+  feed.innerHTML = toShow.map(s => {
+    const icon      = s.strength === 'STRONG' ? '🔥' : '📈';
+    const amazonLink = s.amazon_url
+      ? `<br><a href="${s.amazon_url}" target="_blank">→ View on Amazon</a>`
+      : '';
+    return `<div class="alert-item">
       <div class="alert-icon">${icon}</div>
       <div>
-        <div class="alert-text ${isForte ? 'hot' : ''}">
-          <strong>${s.keyword.slice(0, 60)}${s.keyword.length > 60 ? '...' : ''}</strong> — ${s.amazon_rank ? 'Amazon M&S #' + s.amazon_rank : 'Google Trends only'}
-          ${amazonLine}${amazonLink}
+        <div class="alert-text ${s.strength === 'STRONG' ? 'hot' : ''}">
+          <strong>${truncate(s.keyword, 55)}</strong>
+          <br>#${s.amazon_rank} on Amazon M&S · ${s.category}
+          ${amazonLink}
         </div>
         <div class="alert-time">${s.detected_at || '—'}</div>
       </div>
     </div>`;
-  });
+  }).join('');
 
-  feed.innerHTML = html;
-  document.getElementById('alert-count').textContent = signals.length + ' alert';
+  document.getElementById('alert-count').textContent = `${toShow.length} alerts`;
 }
 
 // ── AUTO REFRESH ──────────────────────────────────────────────────────────────
@@ -610,7 +569,7 @@ function toggleAutoRefresh() {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-document.getElementById('footer-time').textContent = 'CARICAMENTO · ' + nowStr();
+document.getElementById('footer-time').textContent = 'LOADING · ' + nowStr();
 loadData();
 </script>
 </body>
