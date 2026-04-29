@@ -71,7 +71,12 @@ export default {
 // ── DISCOVERY SCAN (runs inside Worker when cron is enabled) ──────────────────
 
 async function runDiscoveryScan(env) {
-  const categories = ['health', 'beauty', 'kitchen', 'electronics', 'pet-supplies', 'sporting-goods', 'toys', 'apparel'];
+  const categories = [
+  'health', 'beauty', 'kitchen', 'electronics', 'pet-supplies',
+  'sporting-goods', 'toys', 'apparel', 'garden', 'diy',
+  'office-products', 'baby', 'automotive', 'musical-instruments',
+  'luggage', 'jewelry'
+];
   const products   = [];
 
   for (const cat of categories) {
