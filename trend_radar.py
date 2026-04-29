@@ -36,22 +36,14 @@ SCHEDULE_TIMES      = ["08:00", "20:00"]
 AMAZON_MAX_PRODUCTS = 20
 
 AMAZON_CATEGORIES = {
-    "health":      "health",
-    "beauty":      "beauty",
-    "kitchen":     "kitchen",
-    "sport":       "sporting-goods",
-    "pet":         "pet-supplies",
-    "tech":        "electronics",
-    "toys":        "toys",
-    "clothing":    "apparel",
-    "garden":      "garden",
-    "diy":         "diy",
-    "office":      "office-products",
-    "baby":        "baby",
-    "automotive":  "automotive",
-    "music":       "musical-instruments",
-    "luggage":     "luggage",
-    "jewellery":   "jewelry",
+    "beauty":     "beauty",
+    "kitchen":    "kitchen",
+    "pet":        "pet-supplies",
+    "tech":       "electronics",
+    "diy":        "diy",
+    "baby":       "baby",
+    "automotive": "automotive",
+    "music":      "musical-instruments",
 }
 
 HEADERS = {
