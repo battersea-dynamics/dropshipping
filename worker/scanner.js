@@ -65,6 +65,15 @@ export default {
       return new Response(JSON.stringify(result), { headers });
     }
 
+    // Serve dashboard for root route
+    if (url.pathname === '/' || url.pathname === '/index.html') {
+      const html = await fetch('https://raw.githubusercontent.com/battersea-dynamics/dropshipping/main/index.html');
+      const content = await html.text();
+      return new Response(content, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+
     return new Response('Trend Radar API running', { headers });
   },
 
