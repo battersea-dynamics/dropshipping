@@ -371,7 +371,14 @@ class TrendRadar:
         #         product.reddit_url   = match["url"]
         #         product.reddit_score = match["score"]
         #         product.sources.append("Reddit")
-        log.info("[2/4] Reddit scanning disabled — enable when API access is ready")
+        # REDDIT PLAN (to activate later):
+        # Instead of matching products to Reddit posts (too noisy),
+        # use Reddit as a CATEGORY HEAT SIGNAL:
+        # - Count posts per category keyword this week (e.g. "hair", "skincare" → beauty is hot)
+        # - Generate one heat score per category (0-100)
+        # - Boost all products in that category by the heat score
+        # - This is more accurate than per-product matching
+        # To activate: uncomment the block above and implement category_heat_score()
 
         log.info("[2/3] Saving results...")
         self._save(products)
