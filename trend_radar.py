@@ -251,35 +251,36 @@ class RedditScanner:
         log.info(f"[Reddit] Total mentions collected: {len(mentions)}")
         return mentions
 
-    def match_product(self, product_name: str, mentions: list[dict]) -> Optional[dict]:
-        """
-        Matches Amazon product names against Reddit posts using
-        broad category keywords extracted from the product name.
-        """
-        # Extract meaningful words — skip brand names and specs
-        stopwords = {
-            'with', 'for', 'and', 'the', 'pack', 'set', 'new', 'best',
-            'pack', 'size', 'free', 'plus', 'pro', 'max', 'mini', 'ultra',
-            'from', 'this', 'that', 'are', 'has', 'have', 'been', 'will',
-        }
-        tokens = [
-            t for t in product_name.lower().split()
-            if len(t) > 4 and t not in stopwords
-            and not t[0].isupper()  # skip brand names (capitalised)
-        ]
+    # Category keywords — what to look for on Reddit per Amazon category
+    CATEGORY_KEYWORDS = {
+        "beauty":     {"keywords": ["makeup", "skincare", "moisturiser", "serum", "spf", "sunscreen", "hair", "shampoo"], "subreddits": ["deals", "Frugal", "hotdeals"]},
+        "kitchen":    {"keywords": ["kitchen", "cooking", "recipe", "pan", "blender", "coffee", "air fryer"], "subreddits": ["deals", "Frugal", "hotdeals"]},
+        "pet":        {"keywords": ["cat", "dog", "pet", "feed", "treat", "collar", "kitten", "puppy"], "subreddits": ["CatAdvice", "dogs", "deals"]},
+        "tech":       {"keywords": ["phone", "charger", "battery", "headphone", "speaker", "tablet", "gadget", "smartwatch"], "subreddits": ["deals", "Frugal", "hotdeals"]},
+        "diy":        {"keywords": ["paint", "drill", "shelf", "fix", "wall", "tool", "screw", "wood"], "subreddits": ["DIY", "deals"]},
+        "baby":       {"keywords": ["baby", "nappy", "newborn", "toddler", "infant", "pram", "crib"], "subreddits": ["BabyBumps", "deals"]},
+        "automotive": {"keywords": ["car", "tyre", "brake", "engine", "oil", "vehicle", "wash", "wiper"], "subreddits": ["CarTalkUK", "deals"]},
+        "music":      {"keywords": ["guitar", "piano", "drum", "music", "instrument", "string", "amp"], "subreddits": ["deals", "Frugal"]},
+    }
 
-        if not tokens:
+    def match_product(self, product_name: str, mentions: list[dict], category: str = "") -> Optional[dict]:
+        config = self.CATEGORY_KEYWORDS.get(category)
+        if not config:
             return None
+
+        keywords   = config["keywords"]
+        subreddits = config["subreddits"]
 
         best_match = None
         best_score = 0
 
         for mention in mentions:
+            # Only check posts from relevant subreddits
+            if mention["subreddit"] not in subreddits:
+                continue
             title_lower = mention["title"].lower()
-            matches = sum(1 for t in tokens if t in title_lower)
-
-            # Lower threshold — just 1 meaningful token match is enough
-            if matches >= 1 and mention["score"] > best_score:
+            matched = any(kw in title_lower for kw in keywords)
+            if matched and mention["score"] > best_score:
                 best_score = mention["score"]
                 best_match = mention
 
@@ -361,23 +362,21 @@ class TrendRadar:
 
         products.sort(key=lambda p: p.rank)
 
-        # Step 2: Reddit cross-reference
-        log.info("[2/4] Scanning Reddit for product mentions...")
-        reddit_mentions = self.reddit.scan()
+        # Step 2: Reddit cross-reference (disabled — needs API access for accuracy)
+        # reddit_mentions = self.reddit.scan()
+        # for product in products:
+        #     match = self.reddit.match_product(product.name, reddit_mentions, product.category)
+        #     if match:
+        #         product.reddit_title = match["title"]
+        #         product.reddit_url   = match["url"]
+        #         product.reddit_score = match["score"]
+        #         product.sources.append("Reddit")
+        log.info("[2/4] Reddit scanning disabled — enable when API access is ready")
 
-        for product in products:
-            match = self.reddit.match_product(product.name, reddit_mentions)
-            if match:
-                product.reddit_title = match["title"]
-                product.reddit_url   = match["url"]
-                product.reddit_score = match["score"]
-                product.sources.append("Reddit")
-                log.info(f"[Reddit] Match: '{truncate(product.name, 40)}' → r/{match['subreddit']} ({match['score']} upvotes)")
-
-        log.info("[3/4] Saving results...")
+        log.info("[2/3] Saving results...")
         self._save(products)
 
-        log.info("[4/4] Sending Telegram alert...")
+        log.info("[3/3] Sending Telegram alert...")
         self.telegram.send_report(products)
 
         log.info(f"Scan complete in {round(time.time() - start, 1)}s — {len(products)} products")
