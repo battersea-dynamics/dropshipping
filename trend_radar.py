@@ -73,15 +73,19 @@ log = logging.getLogger("TrendRadar")
 
 @dataclass
 class Product:
-    name:        str
-    rank:        int
-    category:    str
-    url:         str
-    sources:     list = field(default_factory=list)
-    detected_at: str  = field(default_factory=lambda: datetime.now().strftime("%d/%m/%Y %H:%M"))
+    name:         str
+    rank:         int
+    category:     str
+    url:          str
+    sources:      list = field(default_factory=list)
+    reddit_title: Optional[str] = None
+    reddit_url:   Optional[str] = None
+    reddit_score: int = 0
+    detected_at:  str = field(default_factory=lambda: datetime.now().strftime("%d/%m/%Y %H:%M"))
 
     @property
     def strength(self) -> str:
+        if self.reddit_title and self.rank <= 10: return "STRONG"
         if self.rank <= 5:  return "STRONG"
         if self.rank <= 15: return "MEDIUM"
         return "WEAK"
@@ -95,6 +99,9 @@ class Product:
             "category":      self.category,
             "sources":       self.sources,
             "strength":      self.strength,
+            "reddit_title":  self.reddit_title,
+            "reddit_url":    self.reddit_url,
+            "reddit_score":  self.reddit_score,
             "trends_score":  0,
             "trends_growth": 0,
             "detected_at":   self.detected_at,
@@ -133,7 +140,7 @@ class AmazonScanner:
 
     def _scrape_category(self, label: str, slug: str) -> list[Product]:
         url      = self.BASE_URL.format(category=slug)
-        response = requests.Session().get(url, headers=HEADERS, timeout=15)
+        response = requests.Session().get(url, headers=HEADERS, timeout=8)
         response.raise_for_status()
         soup     = BeautifulSoup(response.text, "html.parser")
         items    = []
@@ -178,6 +185,94 @@ class AmazonScanner:
             sources  = ["Amazon M&S"]
         )
 
+# ── REDDIT SCANNER ────────────────────────────────────────────────────────────
+
+class RedditScanner:
+    """
+    Fetches top posts from UK-relevant subreddits using public JSON feeds.
+    No API key needed. Extracts product mentions from post titles.
+    """
+
+    SUBREDDITS = [
+        "hotdeals",
+        "deals",
+        "DIY",
+        "CatAdvice",
+        "dogs",
+        "Frugal",
+        "BabyBumps",
+        "CarTalkUK",
+    ]
+
+    BASE_URL = "https://www.reddit.com/r/{sub}/top.json?t=week&limit=25"
+
+    HEADERS = {
+        "User-Agent": "TrendRadar/2.0 (dropshipping research tool)"
+    }
+
+    def scan(self) -> list[dict]:
+        """
+        Returns a list of product mentions found on Reddit this week.
+        Each item: { "title": str, "score": int, "subreddit": str, "url": str }
+        """
+        mentions = []
+
+        for sub in self.SUBREDDITS:
+            log.info(f"[Reddit] Scanning: r/{sub}")
+            try:
+                url  = self.BASE_URL.format(sub=sub)
+                resp = requests.get(url, headers=self.HEADERS, timeout=6)
+                resp.raise_for_status()
+                data = resp.json()
+
+                posts = data.get("data", {}).get("children", [])
+                for post in posts:
+                    p = post.get("data", {})
+                    title = p.get("title", "")
+                    score = p.get("score", 0)
+                    link  = f"https://reddit.com{p.get('permalink', '')}"
+
+                    # Only keep posts with decent engagement
+                    if score >= 10:
+                        mentions.append({
+                            "title":     title,
+                            "score":     score,
+                            "subreddit": sub,
+                            "url":       link,
+                        })
+
+                log.info(f"[Reddit] r/{sub}: {len(posts)} posts, "
+                         f"{sum(1 for m in mentions if m['subreddit'] == sub)} relevant")
+                time.sleep(2)  # be polite to Reddit
+
+            except Exception as e:
+                log.warning(f"[Reddit] Error scanning r/{sub}: {e}")
+
+        log.info(f"[Reddit] Total mentions collected: {len(mentions)}")
+        return mentions
+
+    def match_product(self, product_name: str, mentions: list[dict]) -> Optional[dict]:
+        """
+        Checks if a product name appears in any Reddit post title.
+        Returns the best matching post or None.
+        """
+        tokens = [t for t in product_name.lower().split() if len(t) > 3]
+        if not tokens:
+            return None
+
+        best_match = None
+        best_score = 0
+
+        for mention in mentions:
+            title_lower = mention["title"].lower()
+            matches = sum(1 for t in tokens if t in title_lower)
+            ratio   = matches / len(tokens)
+
+            if ratio >= 0.5 and mention["score"] > best_score:
+                best_score  = mention["score"]
+                best_match  = mention
+
+        return best_match
 
 # ── TELEGRAM ALERTER ──────────────────────────────────────────────────────────
 
@@ -236,6 +331,7 @@ class TrendRadar:
 
     def __init__(self):
         self.amazon   = AmazonScanner()
+        self.reddit   = RedditScanner()
         self.telegram = TelegramAlerter()
 
     def run(self) -> list[Product]:
@@ -254,10 +350,23 @@ class TrendRadar:
 
         products.sort(key=lambda p: p.rank)
 
-        log.info("[2/3] Saving results...")
+        # Step 2: Reddit cross-reference
+        log.info("[2/4] Scanning Reddit for product mentions...")
+        reddit_mentions = self.reddit.scan()
+
+        for product in products:
+            match = self.reddit.match_product(product.name, reddit_mentions)
+            if match:
+                product.reddit_title = match["title"]
+                product.reddit_url   = match["url"]
+                product.reddit_score = match["score"]
+                product.sources.append("Reddit")
+                log.info(f"[Reddit] Match: '{truncate(product.name, 40)}' → r/{match['subreddit']} ({match['score']} upvotes)")
+
+        log.info("[3/4] Saving results...")
         self._save(products)
 
-        log.info("[3/3] Sending Telegram alert...")
+        log.info("[4/4] Sending Telegram alert...")
         self.telegram.send_report(products)
 
         log.info(f"Scan complete in {round(time.time() - start, 1)}s — {len(products)} products")
@@ -271,11 +380,6 @@ class TrendRadar:
             "signals":       [p.to_dict() for p in products],
         }
 
-        filename = f"radar_results_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        log.info(f"[Save] Local: {filename}")
-
         try:
             resp = requests.post(CLOUDFLARE_PUSH_URL, json=data, timeout=15)
             if resp.status_code == 200:
@@ -288,6 +392,8 @@ class TrendRadar:
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 
+def truncate(s: str, n: int) -> str:
+    return s[:n] + '...' if len(s) > n else s
 def run_scan():
     try:
         TrendRadar().run()
