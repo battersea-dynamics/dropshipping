@@ -502,9 +502,9 @@ function renderSourceBars(signals) {
 
   document.getElementById('source-bars').innerHTML = `
     <div class="bar-row">
-      <div class="bar-label">Amazon M&S</div>
-      <div class="bar-track"><div class="bar-fill confirmed" style="width:${amazon/total*100}%"></div></div>
-      <div class="bar-pct">${amazon}/${total}</div>
+      <div class="bar-label">Reddit</div>
+      <div class="bar-track"><div class="bar-fill confirmed" style="width:${signals.filter(s => s.reddit_title).length / total * 100}%"></div></div>
+      <div class="bar-pct">${signals.filter(s => s.reddit_title).length}/${total}</div>
     </div>
     <div class="bar-row">
       <div class="bar-label">Reddit</div>
@@ -547,6 +547,7 @@ function renderAlerts(signals) {
         <div class="alert-text ${s.strength === 'STRONG' ? 'hot' : ''}">
           <strong>${truncate(s.keyword, 55)}</strong>
           <br>#${s.amazon_rank} on Amazon M&S · ${s.category}
+          ${s.reddit_title ? `<br>💬 Reddit: <a href="${s.reddit_url}" target="_blank">${s.reddit_title.slice(0,60)}...</a>` : ''}
           ${amazonLink}
         </div>
         <div class="alert-time">${s.detected_at || '—'}</div>
