@@ -25,7 +25,8 @@ export default {
     // ── GET / → serve dashboard ──────────────────────────────────────
     if (url.pathname === '/' || url.pathname === '/index.html') {
       const resp = await fetch(
-        'https://raw.githubusercontent.com/battersea-dynamics/dropshipping/main/index.html'
+        'https://raw.githubusercontent.com/battersea-dynamics/dropshipping/main/index.html',
+        { cache: 'no-store' }
       );
       const html = await resp.text();
       return new Response(html, {
