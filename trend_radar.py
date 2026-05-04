@@ -32,6 +32,11 @@ TELEGRAM_BOT_TOKEN  = "8225165494:AAG9lDDBCrn3GHVe2UM0N_oa7m07bBJZ7Ho"
 TELEGRAM_CHAT_ID    = "8739473584"
 CLOUDFLARE_PUSH_URL = "https://dropshipping.battersea-dynamics.workers.dev/api/push"
 
+# eBay API credentials — add when developer account is approved
+# Register at: https://developer.ebay.com
+EBAY_APP_ID  = ""   # Your App ID (Client ID)
+EBAY_CERT_ID = ""   # Your Cert ID (Client Secret)
+
 SCHEDULE_TIMES      = ["08:00", "20:00"]
 AMAZON_MAX_PRODUCTS = 20
 
@@ -73,19 +78,24 @@ log = logging.getLogger("TrendRadar")
 
 @dataclass
 class Product:
-    name:         str
-    rank:         int
-    category:     str
-    url:          str
-    sources:      list = field(default_factory=list)
-    reddit_title: Optional[str] = None
-    reddit_url:   Optional[str] = None
-    reddit_score: int = 0
-    detected_at:  str = field(default_factory=lambda: datetime.now().strftime("%d/%m/%Y %H:%M"))
+    name:          str
+    rank:          int
+    category:      str
+    url:           str
+    sources:       list = field(default_factory=list)
+    reddit_title:  Optional[str] = None
+    reddit_url:    Optional[str] = None
+    reddit_score:  int = 0
+    ebay_name:     Optional[str] = None
+    ebay_url:      Optional[str] = None
+    ebay_watches:  int = 0
+    ebay_price:    float = 0.0
+    detected_at:   str = field(default_factory=lambda: datetime.now().strftime("%d/%m/%Y %H:%M"))
 
     @property
     def strength(self) -> str:
-        if self.reddit_title and self.rank <= 10: return "STRONG"
+        sources_count = len(self.sources)
+        if sources_count >= 2 and self.rank <= 10: return "STRONG"
         if self.rank <= 5:  return "STRONG"
         if self.rank <= 15: return "MEDIUM"
         return "WEAK"
@@ -102,6 +112,10 @@ class Product:
             "reddit_title":  self.reddit_title,
             "reddit_url":    self.reddit_url,
             "reddit_score":  self.reddit_score,
+            "ebay_name":     self.ebay_name,
+            "ebay_url":      self.ebay_url,
+            "ebay_watches":  self.ebay_watches,
+            "ebay_price":    self.ebay_price,
             "trends_score":  0,
             "trends_growth": 0,
             "detected_at":   self.detected_at,
@@ -184,6 +198,132 @@ class AmazonScanner:
             url      = ("https://www.amazon.co.uk" + link_el["href"]) if link_el else "",
             sources  = ["Amazon M&S"]
         )
+
+# ── EBAY SCANNER ──────────────────────────────────────────────────────────────
+
+class eBayScanner:
+    """
+    Fetches trending items from eBay UK using the Browse API.
+    Signal: items with high watch counts = strong buyer demand.
+    
+    API registration: https://developer.ebay.com (free)
+    Add key to CONFIG section when approved: EBAY_APP_ID
+    """
+
+    # eBay Browse API endpoint
+    API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
+    AUTH_URL = "https://api.ebay.com/identity/v1/oauth2/token"
+
+    # Categories to scan (eBay UK category IDs)
+    CATEGORIES = {
+        "beauty":     "26395",   # Health & Beauty
+        "kitchen":    "20625",   # Kitchen & Home
+        "pet":        "1281",    # Pet Supplies
+        "tech":       "58058",   # Consumer Electronics
+        "diy":        "11700",   # Home & Garden
+        "baby":       "2984",    # Baby
+        "automotive": "9800",    # Vehicle Parts & Accessories
+        "music":      "619",     # Musical Instruments
+    }
+
+    def __init__(self, app_id: str, cert_id: str):
+        self.app_id  = app_id
+        self.cert_id = cert_id
+        self._token  = None
+
+    def _get_token(self) -> Optional[str]:
+        """Gets OAuth token for eBay API."""
+        if self._token:
+            return self._token
+        try:
+            import base64
+            credentials = base64.b64encode(
+                f"{self.app_id}:{self.cert_id}".encode()
+            ).decode()
+
+            resp = requests.post(
+                self.AUTH_URL,
+                headers={
+                    "Authorization": f"Basic {credentials}",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                data="grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope",
+                timeout=10
+            )
+            resp.raise_for_status()
+            self._token = resp.json().get("access_token")
+            return self._token
+        except Exception as e:
+            log.warning(f"[eBay] Token error: {e}")
+            return None
+
+    def scan_all(self) -> list[dict]:
+        """
+        Scans all categories and returns trending items.
+        Each item: { "name": str, "category": str, "watch_count": int,
+                     "price": float, "url": str, "seller_count": int }
+        """
+        token = self._get_token()
+        if not token:
+            log.warning("[eBay] No token — check APP_ID and CERT_ID")
+            return []
+
+        all_items = []
+
+        for label, cat_id in self.CATEGORIES.items():
+            log.info(f"[eBay] Scanning: {label}")
+            try:
+                items = self._fetch_category(token, label, cat_id)
+                all_items.extend(items)
+                log.info(f"[eBay] {label}: {len(items)} items found")
+                time.sleep(1)
+            except Exception as e:
+                log.warning(f"[eBay] Error scanning {label}: {e}")
+
+        log.info(f"[eBay] Total items discovered: {len(all_items)}")
+        return all_items
+
+    def _fetch_category(self, token: str, label: str, cat_id: str) -> list[dict]:
+        resp = requests.get(
+            self.API_URL,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
+                "X-EBAY-C-ENDUSERCTX": "contextualLocation=country%3DGB",
+            },
+            params={
+                "category_ids": cat_id,
+                "sort":         "watchCount",   # sort by most watched
+                "limit":        20,
+                "filter":       "buyingOptions:{FIXED_PRICE}",  # no auctions
+            },
+            timeout=10
+        )
+        resp.raise_for_status()
+        data  = resp.json()
+        items = data.get("itemSummaries", [])
+
+        results = []
+        for item in items:
+            price = 0.0
+            if item.get("price"):
+                try:
+                    price = float(item["price"].get("value", 0))
+                except (ValueError, TypeError):
+                    pass
+
+            results.append({
+                "name":         item.get("title", ""),
+                "category":     label,
+                "watch_count":  item.get("watchCount", 0),
+                "price":        price,
+                "url":          item.get("itemWebUrl", ""),
+                "item_id":      item.get("itemId", ""),
+            })
+
+        # Sort by watch count — most watched first
+        results.sort(key=lambda x: x["watch_count"], reverse=True)
+        return results
 
 # ── REDDIT SCANNER ────────────────────────────────────────────────────────────
 
@@ -345,6 +485,7 @@ class TrendRadar:
         self.amazon   = AmazonScanner()
         self.reddit   = RedditScanner()
         self.telegram = TelegramAlerter()
+        self.ebay     = eBayScanner(EBAY_APP_ID, EBAY_CERT_ID) if EBAY_APP_ID else None
 
     def run(self) -> list[Product]:
         log.info("=" * 60)
@@ -371,6 +512,25 @@ class TrendRadar:
         #         product.reddit_url   = match["url"]
         #         product.reddit_score = match["score"]
         #         product.sources.append("Reddit")
+        
+        # Step 2: eBay cross-reference
+        if self.ebay:
+            log.info("[2/3] Scanning eBay UK trending items...")
+            ebay_items = self.ebay.scan_all()
+
+            # Match Amazon products against eBay trending items
+            for product in products:
+                match = self._match_ebay(product.name, ebay_items)
+                if match:
+                    product.ebay_name    = match["name"]
+                    product.ebay_url     = match["url"]
+                    product.ebay_watches = match["watch_count"]
+                    product.ebay_price   = match["price"]
+                    product.sources.append("eBay")
+                    log.info(f"[eBay] Match: '{truncate(product.name, 40)}' — {match['watch_count']} watches")
+        else:
+            log.info("[2/3] eBay scanning disabled — add EBAY_APP_ID to enable")
+        
         # REDDIT PLAN (to activate later):
         # Instead of matching products to Reddit posts (too noisy),
         # use Reddit as a CATEGORY HEAT SIGNAL:
@@ -408,6 +568,25 @@ class TrendRadar:
 
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
+
+def _match_ebay(self, product_name: str, ebay_items: list[dict]) -> Optional[dict]:
+        """Matches Amazon product name against eBay trending items."""
+        tokens = [t for t in product_name.lower().split() if len(t) > 3]
+        if not tokens:
+            return None
+
+        best_match = None
+        best_watches = 0
+
+        for item in ebay_items:
+            name_lower = item["name"].lower()
+            matches = sum(1 for t in tokens if t in name_lower)
+            ratio = matches / len(tokens)
+            if ratio >= 0.5 and item["watch_count"] > best_watches:
+                best_watches = item["watch_count"]
+                best_match = item
+
+        return best_match
 
 def truncate(s: str, n: int) -> str:
     return s[:n] + '...' if len(s) > n else s
