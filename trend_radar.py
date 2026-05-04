@@ -253,10 +253,21 @@ class RedditScanner:
 
     def match_product(self, product_name: str, mentions: list[dict]) -> Optional[dict]:
         """
-        Checks if a product name appears in any Reddit post title.
-        Returns the best matching post or None.
+        Matches Amazon product names against Reddit posts using
+        broad category keywords extracted from the product name.
         """
-        tokens = [t for t in product_name.lower().split() if len(t) > 3]
+        # Extract meaningful words — skip brand names and specs
+        stopwords = {
+            'with', 'for', 'and', 'the', 'pack', 'set', 'new', 'best',
+            'pack', 'size', 'free', 'plus', 'pro', 'max', 'mini', 'ultra',
+            'from', 'this', 'that', 'are', 'has', 'have', 'been', 'will',
+        }
+        tokens = [
+            t for t in product_name.lower().split()
+            if len(t) > 4 and t not in stopwords
+            and not t[0].isupper()  # skip brand names (capitalised)
+        ]
+
         if not tokens:
             return None
 
@@ -266,11 +277,11 @@ class RedditScanner:
         for mention in mentions:
             title_lower = mention["title"].lower()
             matches = sum(1 for t in tokens if t in title_lower)
-            ratio   = matches / len(tokens)
 
-            if ratio >= 0.5 and mention["score"] > best_score:
-                best_score  = mention["score"]
-                best_match  = mention
+            # Lower threshold — just 1 meaningful token match is enough
+            if matches >= 1 and mention["score"] > best_score:
+                best_score = mention["score"]
+                best_match = mention
 
         return best_match
 
