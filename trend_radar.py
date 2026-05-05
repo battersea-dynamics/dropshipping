@@ -15,6 +15,7 @@ Dependencies:
     pip install requests beautifulsoup4 schedule
 """
 
+import os
 import time
 import json
 import logging
@@ -24,22 +25,23 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional
 from bs4 import BeautifulSoup
-
+from dotenv import load_dotenv
+load_dotenv()
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-TELEGRAM_BOT_TOKEN  = "8225165494:AAG9lDDBCrn3GHVe2UM0N_oa7m07bBJZ7Ho"
-TELEGRAM_CHAT_ID    = "8739473584"
-CLOUDFLARE_PUSH_URL = "https://dropshipping.battersea-dynamics.workers.dev/api/push"
+TELEGRAM_BOT_TOKEN  = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID    = os.getenv("TELEGRAM_CHAT_ID", "")
+CLOUDFLARE_PUSH_URL = os.getenv("CLOUDFLARE_PUSH_URL", "")
 
 # eBay API credentials — add when developer account is approved
 # Register at: https://developer.ebay.com
 
 # TikTok session cookie — refresh every 2-3 weeks from browser Network tab
-TIKTOK_COOKIE = "cookie-consent={%22optional%22:true%2C%22ga%22:true%2C%22af%22:true%2C%22fbp%22:true%2C%22lip%22:true%2C%22bing%22:true%2C%22ttads%22:true%2C%22reddit%22:true%2C%22hubspot%22:true%2C%22version%22:%22v10%22}; passport_csrf_token=a361dbe437ad3b626267790864afdc30; passport_csrf_token_default=a361dbe437ad3b626267790864afdc30; odin_tt=09758de13055decfa5ee9d64d4f9b9f380e7ac0541c0f0d14d392572df1f03104a6fad160a709a5e80fcf04a6acba1a0188af9befd0aeeac20920889c2a40233; lang_type=en; from_way=paid; tta_attr_id_mirror=0.1777959892.7636279588034248712; _ga=GA1.1.8778693.1777959898; _gcl_au=1.1.261568115.1777959898; _rdt_uuid=1777959897853.579be9e5-acb8-4595-9b25-6b0b6f35fe39; _uetmsclkid=_uetb4fb26d5862415731d3e4f2c05eb93f7; _tt_enable_cookie=1; _fbp=fb.1.1777959898459.1735095388; _ttp=3DIBr5GilQr31bYf8z4hlv3fWe4.tt.1; ttcsid=1777959898094::MnNXHrh2ImZQKf0XDZ08.1.1777959908990.0::1.-8409.882::9443.1.1005.17::9520.2.0; msToken=NcuNC4M1T18ToosuafMpf2T5CtQUmHO_ZkvQ0VFagR34joWxxh8Fb4mzza3PxKuYS5s8O18HxEiQ9tHjE41lDnMNht4Ms-5E1zFatSFnjXT0iWVZfQbCVP_1bqRNjIRYXp3M9DrOFyVdowL6xh1IRVQ=; ttwid=1%7CuCryuyyJfpHnru2LKFcExSScvkbtrc2K4MlIHtzCDOo%7C1777961593%7Cc50a06b7c147ff6e901b98fa23f44df2bae6ef8ab586558a0286313667285b7d"
+TIKTOK_COOKIE = os.getenv("TIKTOK_COOKIE", "")
 
-EBAY_APP_ID  = "Bottioni-TrendRad-PRD-e84c0e5fe-b57b7d94"
-EBAY_CERT_ID = "PRD-84c0e5feacef-0216-4b3b-8bae-f430"
+EBAY_APP_ID  = os.getenv("EBAY_APP_ID", "")
+EBAY_CERT_ID = os.getenv("EBAY_CERT_ID", "")
 
 SCHEDULE_TIMES      = ["08:00", "20:00"]
 AMAZON_MAX_PRODUCTS = 20
@@ -635,35 +637,30 @@ class TrendRadar:
         #         product.reddit_url   = match["url"]
         #         product.reddit_score = match["score"]
         #         product.sources.append("Reddit")
-        
-        # Step 2: TikTok trending hashtags
-        log.info("[2/4] Scanning TikTok Creative Center...")
-        tiktok_trends = self.tiktok.scan()
 
+        # REDDIT PLAN (to activate later):
+        # Instead of matching products to Reddit posts (too noisy),
+        # use Reddit as a CATEGORY HEAT SIGNAL:
+        # - Count posts per category keyword this week (e.g. "hair", "skincare" → beauty is hot)
+        # - Generate one heat score per category (0-100)
+        # - Boost all products in that category by the heat score
+        # - This is more accurate than per-product matching
+        # To activate: uncomment the block above and implement category_heat_score()
+
+        # Step 3: TikTok trending hashtags
+        log.info("[3/5] Scanning TikTok Creative Center...")
+        tiktok_trends = self.tiktok.scan()
         if tiktok_trends:
             for product in products:
                 match = self.tiktok.match_product(product, tiktok_trends)
                 if match:
                     product.sources.append("TikTok")
                     log.info(f"[TikTok] Match: '{truncate(product.name, 40)}' → #{match['hashtag']} ({match['posts']} posts)")
-        
-        # Step 2: TikTok trending hashtags
-        log.info("[2/4] Scanning TikTok Creative Center...")
-        tiktok_trends = self.tiktok.scan()
 
-        if tiktok_trends:
-            for product in products:
-                match = self.tiktok.match_product(product, tiktok_trends)
-                if match:
-                    product.sources.append("TikTok")
-                    log.info(f"[TikTok] Match: '{truncate(product.name, 40)}' → #{match['hashtag']} ({match['posts']} posts)")
-        
-        # Step 2: eBay cross-reference
+        # Step 4: eBay cross-reference
         if self.ebay:
-            log.info("[2/3] Scanning eBay UK trending items...")
+            log.info("[4/5] Scanning eBay UK trending items...")
             ebay_items = self.ebay.scan_all()
-
-            # Match Amazon products against eBay trending items
             for product in products:
                 match = self._match_ebay(product.name, ebay_items)
                 if match:
@@ -674,21 +671,12 @@ class TrendRadar:
                     product.sources.append("eBay")
                     log.info(f"[eBay] Match: '{truncate(product.name, 40)}' — {match['watch_count']} watches")
         else:
-            log.info("[2/3] eBay scanning disabled — add EBAY_APP_ID to enable")
-        
-        # REDDIT PLAN (to activate later):
-        # Instead of matching products to Reddit posts (too noisy),
-        # use Reddit as a CATEGORY HEAT SIGNAL:
-        # - Count posts per category keyword this week (e.g. "hair", "skincare" → beauty is hot)
-        # - Generate one heat score per category (0-100)
-        # - Boost all products in that category by the heat score
-        # - This is more accurate than per-product matching
-        # To activate: uncomment the block above and implement category_heat_score()
+            log.info("[4/5] eBay scanning disabled — add EBAY_APP_ID to enable")
 
-        log.info("[2/3] Saving results...")
+        log.info("[5/5] Saving results...")
         self._save(products)
 
-        log.info("[3/3] Sending Telegram alert...")
+        log.info("[5/5] Sending Telegram alert...")
         self.telegram.send_report(products)
 
         log.info(f"Scan complete in {round(time.time() - start, 1)}s — {len(products)} products")
@@ -711,27 +699,28 @@ class TrendRadar:
         except Exception as e:
             log.warning(f"[Save] Cloudflare push error: {e}")
 
+    def _match_ebay(self, product_name: str, ebay_items: list[dict]) -> Optional[dict]:
+            """Matches Amazon product name against eBay trending items."""
+            tokens = [t for t in product_name.lower().split() if len(t) > 3]
+            if not tokens:
+                return None
+
+            best_match  = None
+            best_watches = 0
+
+            for item in ebay_items:
+                name_lower = item["name"].lower()
+                matches    = sum(1 for t in tokens if t in name_lower)
+                ratio      = matches / len(tokens)
+                if ratio >= 0.5 and item["watch_count"] > best_watches:
+                    best_watches = item["watch_count"]
+                    best_match   = item
+
+            return best_match
+
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 
-def _match_ebay(self, product_name: str, ebay_items: list[dict]) -> Optional[dict]:
-        """Matches Amazon product name against eBay trending items."""
-        tokens = [t for t in product_name.lower().split() if len(t) > 3]
-        if not tokens:
-            return None
-
-        best_match = None
-        best_watches = 0
-
-        for item in ebay_items:
-            name_lower = item["name"].lower()
-            matches = sum(1 for t in tokens if t in name_lower)
-            ratio = matches / len(tokens)
-            if ratio >= 0.5 and item["watch_count"] > best_watches:
-                best_watches = item["watch_count"]
-                best_match = item
-
-        return best_match
 
 def truncate(s: str, n: int) -> str:
     return s[:n] + '...' if len(s) > n else s
