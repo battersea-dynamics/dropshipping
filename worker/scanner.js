@@ -59,7 +59,7 @@ export default {
       const challengeCode = url.searchParams.get('challenge_code');
       if (challengeCode) {
         // Respond to eBay's challenge with hash
-        const token = 'TrendRadar2026Secure';
+        const token = 'TrendRadar2026Secureaaaaaaaaaaaaa';
         const endpoint = 'https://dropshipping.battersea-dynamics.workers.dev/ebay/notifications';
         const hash = await crypto.subtle.digest(
           'SHA-256',

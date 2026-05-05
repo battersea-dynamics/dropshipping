@@ -38,8 +38,8 @@ CLOUDFLARE_PUSH_URL = "https://dropshipping.battersea-dynamics.workers.dev/api/p
 # TikTok session cookie — refresh every 2-3 weeks from browser Network tab
 TIKTOK_COOKIE = "cookie-consent={%22optional%22:true%2C%22ga%22:true%2C%22af%22:true%2C%22fbp%22:true%2C%22lip%22:true%2C%22bing%22:true%2C%22ttads%22:true%2C%22reddit%22:true%2C%22hubspot%22:true%2C%22version%22:%22v10%22}; passport_csrf_token=a361dbe437ad3b626267790864afdc30; passport_csrf_token_default=a361dbe437ad3b626267790864afdc30; odin_tt=09758de13055decfa5ee9d64d4f9b9f380e7ac0541c0f0d14d392572df1f03104a6fad160a709a5e80fcf04a6acba1a0188af9befd0aeeac20920889c2a40233; lang_type=en; from_way=paid; tta_attr_id_mirror=0.1777959892.7636279588034248712; _ga=GA1.1.8778693.1777959898; _gcl_au=1.1.261568115.1777959898; _rdt_uuid=1777959897853.579be9e5-acb8-4595-9b25-6b0b6f35fe39; _uetmsclkid=_uetb4fb26d5862415731d3e4f2c05eb93f7; _tt_enable_cookie=1; _fbp=fb.1.1777959898459.1735095388; _ttp=3DIBr5GilQr31bYf8z4hlv3fWe4.tt.1; ttcsid=1777959898094::MnNXHrh2ImZQKf0XDZ08.1.1777959908990.0::1.-8409.882::9443.1.1005.17::9520.2.0; msToken=NcuNC4M1T18ToosuafMpf2T5CtQUmHO_ZkvQ0VFagR34joWxxh8Fb4mzza3PxKuYS5s8O18HxEiQ9tHjE41lDnMNht4Ms-5E1zFatSFnjXT0iWVZfQbCVP_1bqRNjIRYXp3M9DrOFyVdowL6xh1IRVQ=; ttwid=1%7CuCryuyyJfpHnru2LKFcExSScvkbtrc2K4MlIHtzCDOo%7C1777961593%7Cc50a06b7c147ff6e901b98fa23f44df2bae6ef8ab586558a0286313667285b7d"
 
-EBAY_APP_ID  = ""   # Your App ID (Client ID)
-EBAY_CERT_ID = ""   # Your Cert ID (Client Secret)
+EBAY_APP_ID  = "Bottioni-TrendRad-PRD-e84c0e5fe-b57b7d94"
+EBAY_CERT_ID = "PRD-84c0e5feacef-0216-4b3b-8bae-f430"
 
 SCHEDULE_TIMES      = ["08:00", "20:00"]
 AMAZON_MAX_PRODUCTS = 20
