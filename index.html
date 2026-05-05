@@ -513,8 +513,8 @@ function renderSourceBars(signals) {
     </div>
     <div class="bar-row">
       <div class="bar-label">eBay</div>
-      <div class="bar-track"><div class="bar-fill unconfirmed" style="width:0%"></div></div>
-      <div class="bar-pct">coming soon</div>
+      <div class="bar-track"><div class="bar-fill ${signals.filter(s => s.ebay_name).length > 0 ? 'confirmed' : 'unconfirmed'}" style="width:${signals.filter(s => s.ebay_name).length / total * 100}%"></div></div>
+      <div class="bar-pct">${signals.filter(s => s.ebay_name).length}/${total}</div>
     </div>`;
 }
 
@@ -542,6 +542,7 @@ function renderAlerts(signals) {
         <div class="alert-text ${s.strength === 'STRONG' ? 'hot' : ''}">
           <strong>${truncate(s.keyword, 55)}</strong>
           <br>#${s.amazon_rank} on Amazon M&S · ${s.category}
+          ${s.ebay_name ? `<br>🛒 eBay: <a href="${s.ebay_url}" target="_blank">${s.ebay_name.slice(0,50)}...</a> · ${s.ebay_watches} watches` : ''}
           ${s.reddit_title ? `<br>💬 Reddit: <a href="${s.reddit_url}" target="_blank">${s.reddit_title.slice(0,60)}...</a>` : ''}
           ${amazonLink}
         </div>
