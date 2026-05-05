@@ -34,6 +34,10 @@ CLOUDFLARE_PUSH_URL = "https://dropshipping.battersea-dynamics.workers.dev/api/p
 
 # eBay API credentials — add when developer account is approved
 # Register at: https://developer.ebay.com
+
+# TikTok session cookie — refresh every 2-3 weeks from browser Network tab
+TIKTOK_COOKIE = "cookie-consent={%22optional%22:true%2C%22ga%22:true%2C%22af%22:true%2C%22fbp%22:true%2C%22lip%22:true%2C%22bing%22:true%2C%22ttads%22:true%2C%22reddit%22:true%2C%22hubspot%22:true%2C%22version%22:%22v10%22}; passport_csrf_token=a361dbe437ad3b626267790864afdc30; passport_csrf_token_default=a361dbe437ad3b626267790864afdc30; odin_tt=09758de13055decfa5ee9d64d4f9b9f380e7ac0541c0f0d14d392572df1f03104a6fad160a709a5e80fcf04a6acba1a0188af9befd0aeeac20920889c2a40233; lang_type=en; from_way=paid; tta_attr_id_mirror=0.1777959892.7636279588034248712; _ga=GA1.1.8778693.1777959898; _gcl_au=1.1.261568115.1777959898; _rdt_uuid=1777959897853.579be9e5-acb8-4595-9b25-6b0b6f35fe39; _uetmsclkid=_uetb4fb26d5862415731d3e4f2c05eb93f7; _tt_enable_cookie=1; _fbp=fb.1.1777959898459.1735095388; _ttp=3DIBr5GilQr31bYf8z4hlv3fWe4.tt.1; ttcsid=1777959898094::MnNXHrh2ImZQKf0XDZ08.1.1777959908990.0::1.-8409.882::9443.1.1005.17::9520.2.0; msToken=NcuNC4M1T18ToosuafMpf2T5CtQUmHO_ZkvQ0VFagR34joWxxh8Fb4mzza3PxKuYS5s8O18HxEiQ9tHjE41lDnMNht4Ms-5E1zFatSFnjXT0iWVZfQbCVP_1bqRNjIRYXp3M9DrOFyVdowL6xh1IRVQ=; ttwid=1%7CuCryuyyJfpHnru2LKFcExSScvkbtrc2K4MlIHtzCDOo%7C1777961593%7Cc50a06b7c147ff6e901b98fa23f44df2bae6ef8ab586558a0286313667285b7d"
+
 EBAY_APP_ID  = ""   # Your App ID (Client ID)
 EBAY_CERT_ID = ""   # Your Cert ID (Client Secret)
 
@@ -89,7 +93,9 @@ class Product:
     ebay_name:     Optional[str] = None
     ebay_url:      Optional[str] = None
     ebay_watches:  int = 0
-    ebay_price:    float = 0.0
+    ebay_price:      float = 0.0
+    tiktok_hashtag:  Optional[str] = None
+    tiktok_posts:    int = 0
     detected_at:   str = field(default_factory=lambda: datetime.now().strftime("%d/%m/%Y %H:%M"))
 
     @property
@@ -115,7 +121,9 @@ class Product:
             "ebay_name":     self.ebay_name,
             "ebay_url":      self.ebay_url,
             "ebay_watches":  self.ebay_watches,
-            "ebay_price":    self.ebay_price,
+            "ebay_price":      self.ebay_price,
+            "tiktok_hashtag":  self.tiktok_hashtag,
+            "tiktok_posts":    self.tiktok_posts,
             "trends_score":  0,
             "trends_growth": 0,
             "detected_at":   self.detected_at,
@@ -198,6 +206,120 @@ class AmazonScanner:
             url      = ("https://www.amazon.co.uk" + link_el["href"]) if link_el else "",
             sources  = ["Amazon M&S"]
         )
+
+# ── TIKTOK SCANNER ────────────────────────────────────────────────────────────
+
+class TikTokScanner:
+    """
+    Fetches trending hashtags from TikTok Creative Center.
+    Uses the internal API endpoint — no API key needed.
+    Endpoint: ads.tiktok.com/creative_radar_api/v1/popular_trend/hashtag/list
+    """
+
+    API_URL = "https://ads.tiktok.com/creative_radar_api/v1/popular_trend/hashtag/list"
+
+    # Map TikTok industry names to our Amazon categories
+    INDUSTRY_MAP = {
+        "Beauty & Personal Care": "beauty",
+        "Household Products":     "kitchen",
+        "Pets":                   "pet",
+        "Tech & Electronics":     "tech",
+        "Home Improvement":       "diy",
+        "Baby, Kids & Maternity": "baby",
+        "Vehicle & Trans":        "automotive",
+        "Sports & Outdoor":       "sport",
+        "Health":                 "health",
+        "Apparel & Accessories":  "clothing",
+    }
+
+    HEADERS = {
+        "accept":           "application/json, text/plain, */*",
+        "accept-language":  "en-GB,en;q=0.9",
+        "referer":          "https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en",
+        "user-agent":       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+        "sec-fetch-dest":   "empty",
+        "sec-fetch-mode":   "cors",
+        "sec-fetch-site":   "same-origin",
+        "cookie":           TIKTOK_COOKIE,
+    }
+
+    def scan(self) -> list[dict]:
+        """
+        Fetches top trending hashtags for UK across all categories.
+        Returns: [{ "hashtag": str, "posts": int, "category": str, "rank": int }]
+        """
+        results = []
+
+        params = {
+            "page":         1,
+            "limit":        20,
+            "period":       7,
+            "country_code": "GB",
+            "sort_by":      "popular",
+        }
+
+        try:
+            resp = requests.get(
+                self.API_URL,
+                headers=self.HEADERS,
+                params=params,
+                timeout=10
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            if data.get("code") != 0:
+                log.warning(f"[TikTok] API error: {data.get('msg', 'unknown')}")
+                return []
+
+            items = data.get("data", {}).get("list", [])
+            log.info(f"[TikTok] {len(items)} trending hashtags found")
+
+            for i, item in enumerate(items):
+                hashtag  = item.get("hashtag_name", "")
+                posts    = item.get("publish_cnt", 0)
+                industry = item.get("industry_name", "")
+                category = self.INDUSTRY_MAP.get(industry, "general")
+
+                results.append({
+                    "hashtag":  hashtag,
+                    "posts":    posts,
+                    "category": category,
+                    "industry": industry,
+                    "rank":     i + 1,
+                })
+
+                log.info(f"[TikTok] #{i+1} #{hashtag} — {posts} posts ({industry})")
+
+        except Exception as e:
+            log.warning(f"[TikTok] Scan error: {e}")
+
+        return results
+
+    def match_product(self, product: object, tiktok_trends: list[dict]) -> Optional[dict]:
+        """
+        Checks if a product's category has trending hashtags on TikTok.
+        Returns the most popular matching hashtag or None.
+        """
+        category = getattr(product, "category", "")
+        tokens   = [t for t in product.name.lower().split() if len(t) > 3]
+
+        best_match = None
+        best_posts = 0
+
+        for trend in tiktok_trends:
+            # Match by category
+            category_match = trend["category"] == category
+
+            # Match by keyword in hashtag
+            hashtag_lower  = trend["hashtag"].lower()
+            keyword_match  = any(t in hashtag_lower for t in tokens)
+
+            if (category_match or keyword_match) and trend["posts"] > best_posts:
+                best_posts = trend["posts"]
+                best_match = trend
+
+        return best_match
 
 # ── EBAY SCANNER ──────────────────────────────────────────────────────────────
 
@@ -485,7 +607,8 @@ class TrendRadar:
         self.amazon   = AmazonScanner()
         self.reddit   = RedditScanner()
         self.telegram = TelegramAlerter()
-        self.ebay     = eBayScanner(EBAY_APP_ID, EBAY_CERT_ID) if EBAY_APP_ID else None
+        self.ebay    = eBayScanner(EBAY_APP_ID, EBAY_CERT_ID) if EBAY_APP_ID else None
+        self.tiktok  = TikTokScanner()
 
     def run(self) -> list[Product]:
         log.info("=" * 60)
@@ -512,6 +635,28 @@ class TrendRadar:
         #         product.reddit_url   = match["url"]
         #         product.reddit_score = match["score"]
         #         product.sources.append("Reddit")
+        
+        # Step 2: TikTok trending hashtags
+        log.info("[2/4] Scanning TikTok Creative Center...")
+        tiktok_trends = self.tiktok.scan()
+
+        if tiktok_trends:
+            for product in products:
+                match = self.tiktok.match_product(product, tiktok_trends)
+                if match:
+                    product.sources.append("TikTok")
+                    log.info(f"[TikTok] Match: '{truncate(product.name, 40)}' → #{match['hashtag']} ({match['posts']} posts)")
+        
+        # Step 2: TikTok trending hashtags
+        log.info("[2/4] Scanning TikTok Creative Center...")
+        tiktok_trends = self.tiktok.scan()
+
+        if tiktok_trends:
+            for product in products:
+                match = self.tiktok.match_product(product, tiktok_trends)
+                if match:
+                    product.sources.append("TikTok")
+                    log.info(f"[TikTok] Match: '{truncate(product.name, 40)}' → #{match['hashtag']} ({match['posts']} posts)")
         
         # Step 2: eBay cross-reference
         if self.ebay:
