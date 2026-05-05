@@ -54,6 +54,27 @@ export default {
       return new Response(JSON.stringify({ status: 'saved' }), { headers: jsonHeaders });
     }
 
+    // ── GET /ebay/notifications → eBay marketplace deletion endpoint ──────────
+    if (url.pathname === '/ebay/notifications') {
+      const challengeCode = url.searchParams.get('challenge_code');
+      if (challengeCode) {
+        // Respond to eBay's challenge with hash
+        const token = 'TrendRadar2026Secure';
+        const endpoint = 'https://dropshipping.battersea-dynamics.workers.dev/ebay/notifications';
+        const hash = await crypto.subtle.digest(
+          'SHA-256',
+          new TextEncoder().encode(challengeCode + token + endpoint)
+        );
+        const hashArray = Array.from(new Uint8Array(hash));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return new Response(
+          JSON.stringify({ challengeResponse: hashHex }),
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return new Response('OK', { status: 200 });
+    }
+
     // ── Fallback ──────────────────────────────────────────────────────
     return new Response(
       JSON.stringify({ status: 'ok', message: 'Trend Radar API v2' }),
