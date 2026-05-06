@@ -662,7 +662,7 @@ class TrendRadar:
             log.info("[4/5] Scanning eBay UK trending items...")
             ebay_items = self.ebay.scan_all()
             for product in products:
-                match = self._match_ebay(product.name, ebay_items)
+                match = self._match_ebay(product.name, ebay_items, product.category)
                 if match:
                     product.ebay_name    = match["name"]
                     product.ebay_url     = match["url"]
@@ -699,24 +699,15 @@ class TrendRadar:
         except Exception as e:
             log.warning(f"[Save] Cloudflare push error: {e}")
 
-    def _match_ebay(self, product_name: str, ebay_items: list[dict]) -> Optional[dict]:
-            """Matches Amazon product name against eBay trending items."""
-            tokens = [t for t in product_name.lower().split() if len(t) > 3]
-            if not tokens:
-                return None
-
-            best_match  = None
-            best_watches = 0
-
-            for item in ebay_items:
-                name_lower = item["name"].lower()
-                matches    = sum(1 for t in tokens if t in name_lower)
-                ratio      = matches / len(tokens)
-                if ratio >= 0.5 and item["watch_count"] > best_watches:
-                    best_watches = item["watch_count"]
-                    best_match   = item
-
-            return best_match
+    def _match_ebay(self, product_name: str, ebay_items: list[dict], category: str = "") -> Optional[dict]:
+        """
+        Matches by category — finds the most watched eBay item in the same category.
+        More reliable than name matching across platforms.
+        """
+        category_items = [i for i in ebay_items if i.get("category") == category]
+        if not category_items:
+            return None
+        return max(category_items, key=lambda x: x.get("watch_count", 0))
 
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
