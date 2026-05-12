@@ -26,7 +26,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-load_dotenv()
+from playwright.sync_api import sync_playwright
+load_dotenv(override=True)
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,13 @@ CLOUDFLARE_PUSH_URL = os.getenv("CLOUDFLARE_PUSH_URL", "")
 
 # TikTok session cookie — refresh every 2-3 weeks from browser Network tab
 TIKTOK_COOKIE = os.getenv("TIKTOK_COOKIE", "")
+TIKTOK_APP_ID     = os.getenv("TIKTOK_APP_ID", "")
+TIKTOK_APP_SECRET = os.getenv("TIKTOK_APP_SECRET", "")
+TIKTOK_ACCESS_TOKEN = os.getenv("TIKTOK_ACCESS_TOKEN", "")
+TIKTOK_TIMESTAMP  = os.getenv("TIKTOK_TIMESTAMP", "")
+TIKTOK_USER_SIGN  = os.getenv("TIKTOK_USER_SIGN", "")
+TIKTOK_WEB_ID     = os.getenv("TIKTOK_WEB_ID", "")
+TIKTOK_CSRF       = os.getenv("TIKTOK_CSRF", "")
 
 EBAY_APP_ID  = os.getenv("EBAY_APP_ID", "")
 EBAY_CERT_ID = os.getenv("EBAY_CERT_ID", "")
@@ -214,13 +222,11 @@ class AmazonScanner:
 class TikTokScanner:
     """
     Fetches trending hashtags from TikTok Creative Center.
-    Uses the internal API endpoint — no API key needed.
-    Endpoint: ads.tiktok.com/creative_radar_api/v1/popular_trend/hashtag/list
+    Uses official Business API with App ID + Secret authentication.
     """
 
-    API_URL = "https://ads.tiktok.com/creative_radar_api/v1/popular_trend/hashtag/list"
+    API_URL = "https://business-api.tiktok.com/open_api/v1.3/creative_center/trending/hashtag/"
 
-    # Map TikTok industry names to our Amazon categories
     INDUSTRY_MAP = {
         "Beauty & Personal Care": "beauty",
         "Household Products":     "kitchen",
@@ -234,16 +240,11 @@ class TikTokScanner:
         "Apparel & Accessories":  "clothing",
     }
 
-    HEADERS = {
-        "accept":           "application/json, text/plain, */*",
-        "accept-language":  "en-GB,en;q=0.9",
-        "referer":          "https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en",
-        "user-agent":       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-        "sec-fetch-dest":   "empty",
-        "sec-fetch-mode":   "cors",
-        "sec-fetch-site":   "same-origin",
-        "cookie":           TIKTOK_COOKIE,
-    }
+    def _get_headers(self) -> dict:
+        return {
+            "Content-Type":  "application/json",
+            "Access-Token":  TIKTOK_ACCESS_TOKEN,
+        }
 
     def scan(self) -> list[dict]:
         """
@@ -253,26 +254,29 @@ class TikTokScanner:
         results = []
 
         params = {
+            "app_id":       TIKTOK_APP_ID,
             "page":         1,
-            "limit":        20,
+            "page_size":    20,
             "period":       7,
-            "country_code": "GB",
+            "region":       "GB",
             "sort_by":      "popular",
         }
 
         try:
             resp = requests.get(
                 self.API_URL,
-                headers=self.HEADERS,
+                headers=self._get_headers(),
                 params=params,
                 timeout=10
             )
             resp.raise_for_status()
             data = resp.json()
 
-            if data.get("code") != 0:
-                log.warning(f"[TikTok] API error: {data.get('msg', 'unknown')}")
-                return []
+            code = data.get("code", -1)
+            if code != 0:
+                log.warning(f"[TikTok] API error {code}: {data.get('message', 'unknown')}")
+                # Fallback to cookie scraping if API fails
+                return self._scan_fallback()
 
             items = data.get("data", {}).get("list", [])
             log.info(f"[TikTok] {len(items)} trending hashtags found")
@@ -294,8 +298,65 @@ class TikTokScanner:
                 log.info(f"[TikTok] #{i+1} #{hashtag} — {posts} posts ({industry})")
 
         except Exception as e:
-            log.warning(f"[TikTok] Scan error: {e}")
+            log.warning(f"[TikTok] API scan error: {e} — trying fallback")
+            return self._scan_fallback()
 
+        return results
+
+    def _scan_fallback(self) -> list[dict]:
+        """
+        Fallback: scrape Creative Center directly if API fails.
+        Requires TIKTOK_COOKIE set in .env
+        """
+        if not TIKTOK_COOKIE:
+            log.warning("[TikTok] No cookie set — fallback skipped")
+            return []
+
+        results = []
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+                    locale="en-GB",
+                )
+                page = context.new_page()
+                log.info("[TikTok fallback] Opening Creative Center...")
+                page.goto("https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en", wait_until="networkidle", timeout=30000)
+                page.wait_for_timeout(3000)
+
+                # Intercept the API response
+                hashtag_data = []
+                def handle_response(response):
+                    if "popular_trend/hashtag/list" in response.url:
+                        try:
+                            data = response.json()
+                            if data.get("code") == 0:
+                                hashtag_data.extend(data.get("data", {}).get("list", []))
+                                log.info(f"[TikTok fallback] Intercepted {len(hashtag_data)} hashtags")
+                        except Exception:
+                            pass
+
+                page.on("response", handle_response)
+                page.reload(wait_until="networkidle", timeout=30000)
+                page.wait_for_timeout(15000)
+                browser.close()
+
+                for i, item in enumerate(hashtag_data):
+                    hashtag  = item.get("hashtag_name", "")
+                    posts    = item.get("publish_cnt", 0)
+                    industry = item.get("industry_name", "")
+                    category = self.INDUSTRY_MAP.get(industry, "general")
+                    results.append({
+                        "hashtag":  hashtag,
+                        "posts":    posts,
+                        "category": category,
+                        "industry": industry,
+                        "rank":     i + 1,
+                    })
+
+        except Exception as e:
+            log.warning(f"[TikTok fallback] Playwright error: {e}")
         return results
 
     def match_product(self, product: object, tiktok_trends: list[dict]) -> Optional[dict]:
@@ -310,10 +371,7 @@ class TikTokScanner:
         best_posts = 0
 
         for trend in tiktok_trends:
-            # Match by category
             category_match = trend["category"] == category
-
-            # Match by keyword in hashtag
             hashtag_lower  = trend["hashtag"].lower()
             keyword_match  = any(t in hashtag_lower for t in tokens)
 
