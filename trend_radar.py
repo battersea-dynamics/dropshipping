@@ -38,15 +38,8 @@ CLOUDFLARE_PUSH_URL = os.getenv("CLOUDFLARE_PUSH_URL", "")
 # eBay API credentials — add when developer account is approved
 # Register at: https://developer.ebay.com
 
-# TikTok session cookie — refresh every 2-3 weeks from browser Network tab
-TIKTOK_COOKIE = os.getenv("TIKTOK_COOKIE", "")
 TIKTOK_APP_ID     = os.getenv("TIKTOK_APP_ID", "")
 TIKTOK_APP_SECRET = os.getenv("TIKTOK_APP_SECRET", "")
-TIKTOK_ACCESS_TOKEN = os.getenv("TIKTOK_ACCESS_TOKEN", "")
-TIKTOK_TIMESTAMP  = os.getenv("TIKTOK_TIMESTAMP", "")
-TIKTOK_USER_SIGN  = os.getenv("TIKTOK_USER_SIGN", "")
-TIKTOK_WEB_ID     = os.getenv("TIKTOK_WEB_ID", "")
-TIKTOK_CSRF       = os.getenv("TIKTOK_CSRF", "")
 
 EBAY_APP_ID  = os.getenv("EBAY_APP_ID", "")
 EBAY_CERT_ID = os.getenv("EBAY_CERT_ID", "")
@@ -164,9 +157,16 @@ class AmazonScanner:
                 products = self._scrape_category(label, slug)
                 all_products.extend(products)
                 log.info(f"[Amazon] {label}: {len(products)} products found")
-                time.sleep(4)
+                time.sleep(3)
             except Exception as e:
-                log.warning(f"[Amazon] Error scanning {label}: {e}")
+                log.warning(f"[Amazon] Error scanning {label}: {e} — retrying in 5s")
+                time.sleep(5)
+                try:
+                    products = self._scrape_category(label, slug)
+                    all_products.extend(products)
+                    log.info(f"[Amazon] {label} (retry): {len(products)} products found")
+                except Exception as e2:
+                    log.warning(f"[Amazon] {label} retry failed: {e2} — skipping")
         log.info(f"[Amazon] Total products discovered: {len(all_products)}")
         return all_products
 
@@ -221,11 +221,9 @@ class AmazonScanner:
 
 class TikTokScanner:
     """
-    Fetches trending hashtags from TikTok Creative Center.
-    Uses official Business API with App ID + Secret authentication.
+    Fetches trending hashtags from TikTok Creative Center via Playwright.
+    Opens a headless browser and intercepts the hashtag API response.
     """
-
-    API_URL = "https://business-api.tiktok.com/open_api/v1.3/creative_center/trending/hashtag/"
 
     INDUSTRY_MAP = {
         "Beauty & Personal Care": "beauty",
@@ -240,78 +238,11 @@ class TikTokScanner:
         "Apparel & Accessories":  "clothing",
     }
 
-    def _get_headers(self) -> dict:
-        return {
-            "Content-Type":  "application/json",
-            "Access-Token":  TIKTOK_ACCESS_TOKEN,
-        }
-
     def scan(self) -> list[dict]:
         """
-        Fetches top trending hashtags for UK across all categories.
+        Fetches top trending hashtags from TikTok Creative Center via Playwright.
         Returns: [{ "hashtag": str, "posts": int, "category": str, "rank": int }]
         """
-        results = []
-
-        params = {
-            "app_id":       TIKTOK_APP_ID,
-            "page":         1,
-            "page_size":    20,
-            "period":       7,
-            "region":       "GB",
-            "sort_by":      "popular",
-        }
-
-        try:
-            resp = requests.get(
-                self.API_URL,
-                headers=self._get_headers(),
-                params=params,
-                timeout=10
-            )
-            resp.raise_for_status()
-            data = resp.json()
-
-            code = data.get("code", -1)
-            if code != 0:
-                log.warning(f"[TikTok] API error {code}: {data.get('message', 'unknown')}")
-                # Fallback to cookie scraping if API fails
-                return self._scan_fallback()
-
-            items = data.get("data", {}).get("list", [])
-            log.info(f"[TikTok] {len(items)} trending hashtags found")
-
-            for i, item in enumerate(items):
-                hashtag  = item.get("hashtag_name", "")
-                posts    = item.get("publish_cnt", 0)
-                industry = item.get("industry_name", "")
-                category = self.INDUSTRY_MAP.get(industry, "general")
-
-                results.append({
-                    "hashtag":  hashtag,
-                    "posts":    posts,
-                    "category": category,
-                    "industry": industry,
-                    "rank":     i + 1,
-                })
-
-                log.info(f"[TikTok] #{i+1} #{hashtag} — {posts} posts ({industry})")
-
-        except Exception as e:
-            log.warning(f"[TikTok] API scan error: {e} — trying fallback")
-            return self._scan_fallback()
-
-        return results
-
-    def _scan_fallback(self) -> list[dict]:
-        """
-        Fallback: scrape Creative Center directly if API fails.
-        Requires TIKTOK_COOKIE set in .env
-        """
-        if not TIKTOK_COOKIE:
-            log.warning("[TikTok] No cookie set — fallback skipped")
-            return []
-
         results = []
         try:
             with sync_playwright() as p:
@@ -321,11 +252,8 @@ class TikTokScanner:
                     locale="en-GB",
                 )
                 page = context.new_page()
-                log.info("[TikTok fallback] Opening Creative Center...")
-                page.goto("https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en", wait_until="networkidle", timeout=30000)
-                page.wait_for_timeout(3000)
+                log.info("[TikTok] Opening Creative Center...")
 
-                # Intercept the API response
                 hashtag_data = []
                 def handle_response(response):
                     if "popular_trend/hashtag/list" in response.url:
@@ -333,12 +261,12 @@ class TikTokScanner:
                             data = response.json()
                             if data.get("code") == 0:
                                 hashtag_data.extend(data.get("data", {}).get("list", []))
-                                log.info(f"[TikTok fallback] Intercepted {len(hashtag_data)} hashtags")
+                                log.info(f"[TikTok] Intercepted {len(hashtag_data)} hashtags")
                         except Exception:
                             pass
 
                 page.on("response", handle_response)
-                page.reload(wait_until="networkidle", timeout=30000)
+                page.goto("https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en", wait_until="networkidle", timeout=30000)
                 page.wait_for_timeout(15000)
                 browser.close()
 
@@ -354,9 +282,10 @@ class TikTokScanner:
                         "industry": industry,
                         "rank":     i + 1,
                     })
+                    log.info(f"[TikTok] #{i+1} #{hashtag} — {posts} posts ({industry})")
 
         except Exception as e:
-            log.warning(f"[TikTok fallback] Playwright error: {e}")
+            log.warning(f"[TikTok] Playwright error: {e}")
         return results
 
     def match_product(self, product: object, tiktok_trends: list[dict]) -> Optional[dict]:
@@ -380,6 +309,62 @@ class TikTokScanner:
                 best_match = trend
 
         return best_match
+
+# ── GOOGLE TRENDS SCANNER (commented out — activate when ready) ───────────────
+#
+# To activate:
+# 1. Sign up at serpapi.com (~£3/month)
+# 2. Add SERPAPI_KEY=your_key to .env
+# 3. pip install google-search-results
+# 4. Uncomment this entire class
+# 5. In TrendRadar.__init__(), add:
+#        self.google_trends = GoogleTrendsScanner()
+# 6. In TrendRadar.run(), add a scan call per product:
+#        trend = self.google_trends.scan(product.name)
+#        if trend["growing"]:
+#            product.sources.append("Google Trends")
+#
+# class GoogleTrendsScanner:
+#     """
+#     Checks Google Trends for a product or keyword using SerpAPI.
+#     Signal: if last timelineData value > first value, trend is growing.
+#     """
+#
+#     def scan(self, query: str) -> dict:
+#         """
+#         Returns trend info for a product name.
+#         Result: { "query": str, "growing": bool, "score": int }
+#         """
+#         import serpapi
+#         SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
+#         if not SERPAPI_KEY:
+#             log.warning("[Google Trends] SERPAPI_KEY not set — skipping")
+#             return {"query": query, "growing": False, "score": 0}
+#
+#         try:
+#             client = serpapi.Client(api_key=SERPAPI_KEY)
+#             results = client.search({
+#                 "engine": "google_trends",
+#                 "q":      query,
+#                 "geo":    "GB",
+#                 "date":   "today 3-m",
+#             })
+#
+#             timeline = results.get("interest_over_time", {}).get("timeline_data", [])
+#             if len(timeline) < 2:
+#                 return {"query": query, "growing": False, "score": 0}
+#
+#             first_val = timeline[0]["values"][0].get("extracted_value", 0)
+#             last_val  = timeline[-1]["values"][0].get("extracted_value", 0)
+#             growing   = last_val > first_val
+#             score     = last_val
+#
+#             log.info(f"[Google Trends] '{query}': {first_val} → {last_val} ({'↑' if growing else '↓'})")
+#             return {"query": query, "growing": growing, "score": score}
+#
+#         except Exception as e:
+#             log.warning(f"[Google Trends] Error for '{query}': {e}")
+#             return {"query": query, "growing": False, "score": 0}
 
 # ── EBAY SCANNER ──────────────────────────────────────────────────────────────
 
