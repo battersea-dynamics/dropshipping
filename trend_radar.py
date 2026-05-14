@@ -17,7 +17,6 @@ Dependencies:
 
 import os
 import time
-import json
 import logging
 import schedule
 import requests
@@ -56,6 +55,8 @@ AMAZON_CATEGORIES = {
     "baby":       "baby",
     "automotive": "automotive",
     "music":      "musical-instruments",
+    "health":     "health-personal-care",
+    "sport":      "sports",
 }
 
 HEADERS = {
@@ -95,7 +96,7 @@ class Product:
     reddit_score:  int = 0
     ebay_name:     Optional[str] = None
     ebay_url:      Optional[str] = None
-    ebay_watches:  int = 0
+    ebay_sold:     int = 0
     ebay_price:      float = 0.0
     tiktok_hashtag:  Optional[str] = None
     tiktok_posts:    int = 0
@@ -123,7 +124,7 @@ class Product:
             "reddit_score":  self.reddit_score,
             "ebay_name":     self.ebay_name,
             "ebay_url":      self.ebay_url,
-            "ebay_watches":  self.ebay_watches,
+            "ebay_sold":     self.ebay_sold,
             "ebay_price":      self.ebay_price,
             "tiktok_hashtag":  self.tiktok_hashtag,
             "tiktok_posts":    self.tiktok_posts,
@@ -267,7 +268,7 @@ class TikTokScanner:
 
                 page.on("response", handle_response)
                 page.goto("https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en", wait_until="networkidle", timeout=30000)
-                page.wait_for_timeout(15000)
+                page.wait_for_timeout(10000)
                 browser.close()
 
                 for i, item in enumerate(hashtag_data):
@@ -309,6 +310,137 @@ class TikTokScanner:
                 best_match = trend
 
         return best_match
+
+# ── PINTEREST SCANNER ────────────────────────────────────────────────────────
+
+class PinterestScanner:
+    """
+    Fetches trending keywords from Pinterest Trends via Playwright.
+    Opens headless Chrome, intercepts the trends API response.
+    No API key required.
+    """
+
+    CATEGORY_MAP = {
+        "beauty":           "beauty",
+        "hair":             "beauty",
+        "skincare":         "beauty",
+        "makeup":           "beauty",
+        "health":           "health",
+        "wellness":         "health",
+        "fitness":          "sport",
+        "exercise":         "sport",
+        "sport":            "sport",
+        "home decor":       "kitchen",
+        "kitchen":          "kitchen",
+        "cooking":          "kitchen",
+        "food":             "kitchen",
+        "pets":             "pet",
+        "dogs":             "pet",
+        "cats":             "pet",
+        "technology":       "tech",
+        "gadgets":          "tech",
+        "electronics":      "tech",
+        "diy":              "diy",
+        "home improvement": "diy",
+        "baby":             "baby",
+        "kids":             "baby",
+        "parenting":        "baby",
+        "automotive":       "automotive",
+        "cars":             "automotive",
+        "music":            "music",
+    }
+
+    def scan(self) -> list[dict]:
+        """
+        Opens trends.pinterest.com via Playwright and intercepts the trends API call.
+        Returns: [{ "keyword": str, "category": str, "rank": int }]
+        Logs a warning and returns [] on any error — never crashes.
+        """
+        results = []
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                    locale="en-GB",
+                )
+                page = context.new_page()
+                log.info("[Pinterest] Opening trends.pinterest.com...")
+
+                trend_data = []
+
+                def handle_response(response):
+                    url = response.url
+                    if "pinterest.com" not in url:
+                        return
+                    if not any(k in url for k in ["trend", "keyword", "search", "popular", "explore"]):
+                        return
+                    try:
+                        body = response.json()
+                        # Handle various Pinterest API response shapes
+                        keywords = (
+                            body.get("data", {}).get("results") or
+                            body.get("data", {}).get("keywords") or
+                            body.get("data", {}).get("trends") or
+                            body.get("keywords") or
+                            body.get("results") or
+                            body.get("trends") or
+                            []
+                        )
+                        if keywords and isinstance(keywords, list) and len(keywords) > 0:
+                            trend_data.extend(keywords)
+                            log.info(f"[Pinterest] Intercepted {len(keywords)} items from {url[:80]}")
+                    except Exception:
+                        pass
+
+                page.on("response", handle_response)
+                page.goto("https://trends.pinterest.com/?country=gb", wait_until="networkidle", timeout=30000)
+                page.wait_for_timeout(5000)
+                browser.close()
+
+            if not trend_data:
+                log.warning("[Pinterest] No trend data intercepted — skipping")
+                return []
+
+            for i, item in enumerate(trend_data[:20]):
+                keyword = (
+                    item.get("keyword") or
+                    item.get("query") or
+                    item.get("name") or
+                    item.get("term") or
+                    (item if isinstance(item, str) else "")
+                )
+                if not keyword:
+                    continue
+                category = self._map_category(str(keyword))
+                results.append({"keyword": keyword, "category": category, "rank": i + 1})
+                log.info(f"[Pinterest] #{i+1} {keyword} → {category}")
+
+            log.info(f"[Pinterest] {len(results)} trending keywords found")
+
+        except Exception as e:
+            log.warning(f"[Pinterest] Playwright error: {e} — skipping")
+
+        return results
+
+    def _map_category(self, name: str) -> str:
+        name_lower = name.lower()
+        for key, val in self.CATEGORY_MAP.items():
+            if key in name_lower:
+                return val
+        return "general"
+
+    def match_product(self, product: object, pinterest_trends: list[dict]) -> Optional[dict]:
+        """
+        Matches by category — same approach as TikTok.
+        Returns the best-ranked trend matching the product's category, or None.
+        """
+        category = getattr(product, "category", "")
+        for trend in pinterest_trends:
+            if trend["category"] == category:
+                return trend
+        return None
+
 
 # ── GOOGLE TRENDS SCANNER (commented out — activate when ready) ───────────────
 #
@@ -358,9 +490,10 @@ class TikTokScanner:
 #             last_val  = timeline[-1]["values"][0].get("extracted_value", 0)
 #             growing   = last_val > first_val
 #             score     = last_val
+#             growth    = round(((last_val - first_val) / first_val) * 100) if first_val > 0 else 0
 #
-#             log.info(f"[Google Trends] '{query}': {first_val} → {last_val} ({'↑' if growing else '↓'})")
-#             return {"query": query, "growing": growing, "score": score}
+#             log.info(f"[Google Trends] '{query}': {first_val} → {last_val} ({growth:+d}% {'↑' if growing else '↓'})")
+#             return {"query": query, "growing": growing, "score": score, "growth": growth}
 #
 #         except Exception as e:
 #             log.warning(f"[Google Trends] Error for '{query}': {e}")
@@ -427,8 +560,8 @@ class eBayScanner:
     def scan_all(self) -> list[dict]:
         """
         Scans all categories and returns trending items.
-        Each item: { "name": str, "category": str, "watch_count": int,
-                     "price": float, "url": str, "seller_count": int }
+        Each item: { "name": str, "category": str, "sold_count": int,
+                     "price": float, "url": str }
         """
         token = self._get_token()
         if not token:
@@ -460,9 +593,10 @@ class eBayScanner:
             },
             params={
                 "category_ids": cat_id,
-                "sort":         "watchCount",   # sort by most watched
+                "sort":         "newlyListed",
                 "limit":        20,
-                "filter":       "buyingOptions:{FIXED_PRICE}",  # no auctions
+                "filter":       "buyingOptions:{FIXED_PRICE}",
+                "fieldgroups":  "BUYING_OPTION_DETAILS",
             },
             timeout=10
         )
@@ -479,17 +613,22 @@ class eBayScanner:
                 except (ValueError, TypeError):
                     pass
 
+            sold_count = item.get("soldCount") or item.get("totalSoldItems") or item.get("soldQuantity") or 0
+            try:
+                sold_count = int(sold_count)
+            except (TypeError, ValueError):
+                sold_count = 0
+
             results.append({
-                "name":         item.get("title", ""),
-                "category":     label,
-                "watch_count":  item.get("watchCount", 0),
-                "price":        price,
-                "url":          item.get("itemWebUrl", ""),
-                "item_id":      item.get("itemId", ""),
+                "name":       item.get("title", ""),
+                "category":   label,
+                "sold_count": sold_count,
+                "price":      price,
+                "url":        item.get("itemWebUrl", ""),
+                "item_id":    item.get("itemId", ""),
             })
 
-        # Sort by watch count — most watched first
-        results.sort(key=lambda x: x["watch_count"], reverse=True)
+        results.sort(key=lambda x: x["sold_count"], reverse=True)
         return results
 
 # ── REDDIT SCANNER ────────────────────────────────────────────────────────────
@@ -509,6 +648,23 @@ class RedditScanner:
         "Frugal",
         "BabyBumps",
         "CarTalkUK",
+        # UK-focused
+        "UKPersonalFinance",
+        "AskUK",
+        "GiftIdeas",
+        "malegrooming",
+        "SkincareAddiction",
+        "Homeimprovement",
+        # Supplements/Health
+        "Supplements",
+        "Nootropics",
+        "Vitamins",
+        "HerbalMedicine",
+        "nutrition",
+        "HealthyFood",
+        "intermittentfasting",
+        "loseit",
+        "fitness",
     ]
 
     BASE_URL = "https://www.reddit.com/r/{sub}/top.json?t=week&limit=25"
@@ -568,6 +724,17 @@ class RedditScanner:
         "baby":       {"keywords": ["baby", "nappy", "newborn", "toddler", "infant", "pram", "crib"], "subreddits": ["BabyBumps", "deals"]},
         "automotive": {"keywords": ["car", "tyre", "brake", "engine", "oil", "vehicle", "wash", "wiper"], "subreddits": ["CarTalkUK", "deals"]},
         "music":      {"keywords": ["guitar", "piano", "drum", "music", "instrument", "string", "amp"], "subreddits": ["deals", "Frugal"]},
+        "health":     {
+            "keywords": ["supplement", "vitamin", "protein", "omega", "magnesium", "collagen",
+                         "probiotic", "herbal", "turmeric", "ashwagandha", "zinc", "iron",
+                         "b12", "cbd", "creatine"],
+            "subreddits": ["Supplements", "Vitamins", "nutrition", "HerbalMedicine", "fitness", "loseit"],
+        },
+        "sport":      {
+            "keywords": ["gym", "workout", "fitness", "running", "yoga", "cycling", "protein",
+                         "creatine", "pre-workout", "resistance"],
+            "subreddits": ["fitness", "loseit", "intermittentfasting", "malegrooming"],
+        },
     }
 
     def match_product(self, product_name: str, mentions: list[dict], category: str = "") -> Optional[dict]:
@@ -649,11 +816,12 @@ class TrendRadar:
     """
 
     def __init__(self):
-        self.amazon   = AmazonScanner()
-        self.reddit   = RedditScanner()
-        self.telegram = TelegramAlerter()
-        self.ebay    = eBayScanner(EBAY_APP_ID, EBAY_CERT_ID) if EBAY_APP_ID else None
-        self.tiktok  = TikTokScanner()
+        self.amazon    = AmazonScanner()
+        self.reddit    = RedditScanner()
+        self.telegram  = TelegramAlerter()
+        self.ebay      = eBayScanner(EBAY_APP_ID, EBAY_CERT_ID) if EBAY_APP_ID else None
+        self.tiktok    = TikTokScanner()
+        self.pinterest = PinterestScanner()
 
     def run(self) -> list[Product]:
         log.info("=" * 60)
@@ -661,7 +829,7 @@ class TrendRadar:
         log.info("=" * 60)
         start = time.time()
 
-        log.info("[1/3] Scanning Amazon UK Movers & Shakers...")
+        log.info("[1/5] Scanning Amazon UK Movers & Shakers...")
         products = self.amazon.scan_all()
 
         if not products:
@@ -690,8 +858,8 @@ class TrendRadar:
         # - This is more accurate than per-product matching
         # To activate: uncomment the block above and implement category_heat_score()
 
-        # Step 3: TikTok trending hashtags
-        log.info("[3/5] Scanning TikTok Creative Center...")
+        # Step 2: TikTok trending hashtags
+        log.info("[2/5] Scanning TikTok Creative Center...")
         tiktok_trends = self.tiktok.scan()
         if tiktok_trends:
             for product in products:
@@ -700,6 +868,18 @@ class TrendRadar:
                     product.sources.append("TikTok")
                     log.info(f"[TikTok] Match: '{truncate(product.name, 40)}' → #{match['hashtag']} ({match['posts']} posts)")
 
+        # Step 3: Pinterest trending categories
+        log.info("[3/5] Scanning Pinterest Trends...")
+        pinterest_trends = self.pinterest.scan()
+        if pinterest_trends:
+            for product in products:
+                match = self.pinterest.match_product(product, pinterest_trends)
+                if match:
+                    product.sources.append("Pinterest")
+                    log.info(f"[Pinterest] Match: '{truncate(product.name, 40)}' → {match['keyword']}")
+        else:
+            log.warning("[Pinterest] No trends returned — skipping")
+
         # Step 4: eBay cross-reference
         if self.ebay:
             log.info("[4/5] Scanning eBay UK trending items...")
@@ -707,19 +887,17 @@ class TrendRadar:
             for product in products:
                 match = self._match_ebay(product.name, ebay_items, product.category)
                 if match:
-                    product.ebay_name    = match["name"]
-                    product.ebay_url     = match["url"]
-                    product.ebay_watches = match["watch_count"]
-                    product.ebay_price   = match["price"]
+                    product.ebay_name  = match["name"]
+                    product.ebay_url   = match["url"]
+                    product.ebay_sold  = match["sold_count"]
+                    product.ebay_price = match["price"]
                     product.sources.append("eBay")
-                    log.info(f"[eBay] Match: '{truncate(product.name, 40)}' — {match['watch_count']} watches")
+                    log.info(f"[eBay] Match: '{truncate(product.name, 40)}' — {match['sold_count']} sold")
         else:
             log.info("[4/5] eBay scanning disabled — add EBAY_APP_ID to enable")
 
-        log.info("[5/5] Saving results...")
+        log.info("[5/5] Saving results and sending alert...")
         self._save(products)
-
-        log.info("[5/5] Sending Telegram alert...")
         self.telegram.send_report(products)
 
         log.info(f"Scan complete in {round(time.time() - start, 1)}s — {len(products)} products")
@@ -750,7 +928,7 @@ class TrendRadar:
         category_items = [i for i in ebay_items if i.get("category") == category]
         if not category_items:
             return None
-        return max(category_items, key=lambda x: x.get("watch_count", 0))
+        return max(category_items, key=lambda x: x.get("sold_count", 0))
 
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
