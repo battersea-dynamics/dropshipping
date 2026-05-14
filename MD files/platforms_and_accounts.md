@@ -8,7 +8,7 @@
 |---|---|---|
 | GitHub | github.com/battersea-dynamics | Code repositories |
 | GitHub repo — dropshipping | github.com/battersea-dynamics/dropshipping | Main scanner project |
-| GitHub repo — gazzaopportunity | github.com/battersea-dynamics/gazzaopportunity | gazza.ltd landing page |
+| GitHub repo — gazzaopportunity | github.com/battersea-dynamics/gazzaopportunity | nexvita.uk landing page |
 | Cloudflare | dash.cloudflare.com | Worker, KV storage, dashboard hosting |
 | VS Code | Local IDE | Writing and editing code |
 | Python | Local | Running trend_radar.py scanner |
@@ -29,9 +29,9 @@
 ## Domains & Email
 | Platform | URL | What for |
 |---|---|---|
-| Spaceship | spaceship.com | Domain registrar — gazza.ltd |
-| gazza.ltd | Email forwarding set up via Spaceship | hello@gazza.ltd forwards to Gmail |
-| Cloudflare | dash.cloudflare.com | DNS (when gazza.ltd is connected) |
+| Spaceship | spaceship.com | Domain registrar — nexvita.uk |
+| nexvita.uk | Email forwarding set up via Spaceship | hello@nexvita.uk forwards to Gmail |
+| Cloudflare | dash.cloudflare.com | DNS (when nexvita.uk is connected) |
 
 ---
 
@@ -69,7 +69,7 @@
 | Platform | URL | Status | Notes |
 |---|---|---|---|
 | eBay Developer | developer.ebay.com | ✅ Active | App: TrendRadar — keys in .env file |
-| TikTok Developer | business-api.tiktok.com/portal | ⏳ Pending | Use hello@gazza.ltd email |
+| TikTok Developer | business-api.tiktok.com/portal | ⏳ Pending | Use hello@nexvita.uk email |
 | SerpAPI | serpapi.com | 🔜 When revenue starts | Google Trends — ~£3/month |
 | Meta Developer | developers.facebook.com | 🔜 Not started | For Meta Ad Library |
 | Reddit Developer | reddit.com/prefs/apps | ⚠️ Blocked | Network blocked during setup — retry later |
@@ -137,7 +137,7 @@
 
 ## Pending Actions
 - [ ] Wait for TikTok Developer approval (up to 3 days) → add App ID + Secret to .env
-- [ ] Add gazza.ltd to Cloudflare (for custom domain)
+- [ ] Add nexvita.uk to Cloudflare (for custom domain)
 - [ ] Upload landing page to gazzaopportunity repo → enable GitHub Pages
 - [ ] Fix eBay watch count (currently returns 0)
 - [ ] Implement Reddit category heat signal
