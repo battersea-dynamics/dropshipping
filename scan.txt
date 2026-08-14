@@ -1,0 +1,36 @@
+23:39:22 | INFO | ============================================================
+23:39:22 | INFO | TREND RADAR v2 — Starting scan
+23:39:22 | INFO | ============================================================
+23:39:22 | INFO | [1/5] Scanning Amazon UK Movers & Shakers...
+23:39:22 | INFO | [Amazon] Scanning: beauty
+23:39:23 | WARNING | [Amazon] beauty: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in Beauty sales rank over t', bytes=313618). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:23 | INFO | [Amazon] beauty: 0 products found
+23:39:26 | INFO | [Amazon] Scanning: kitchen
+23:39:27 | WARNING | [Amazon] kitchen: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in Home & Kitchen sales ran', bytes=324479). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:27 | INFO | [Amazon] kitchen: 0 products found
+23:39:30 | INFO | [Amazon] Scanning: pet
+23:39:30 | WARNING | [Amazon] pet: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in Pet Supplies sales rank ', bytes=313242). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:30 | INFO | [Amazon] pet: 0 products found
+23:39:33 | INFO | [Amazon] Scanning: tech
+23:39:33 | WARNING | [Amazon] tech: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in Electronics & Photo sale', bytes=316094). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:33 | INFO | [Amazon] tech: 0 products found
+23:39:36 | INFO | [Amazon] Scanning: diy
+23:39:37 | WARNING | [Amazon] diy: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in DIY & Tools sales rank o', bytes=321398). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:37 | INFO | [Amazon] diy: 0 products found
+23:39:40 | INFO | [Amazon] Scanning: baby
+23:39:40 | WARNING | [Amazon] baby: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in Baby Products sales rank', bytes=314785). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:40 | INFO | [Amazon] baby: 0 products found
+23:39:43 | INFO | [Amazon] Scanning: automotive
+23:39:43 | WARNING | [Amazon] automotive: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in Automotive sales rank ov', bytes=313091). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:43 | INFO | [Amazon] automotive: 0 products found
+23:39:46 | INFO | [Amazon] Scanning: music
+23:39:47 | WARNING | [Amazon] music: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in Musical Instruments & DJ', bytes=315424). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:47 | INFO | [Amazon] music: 0 products found
+23:39:50 | INFO | [Amazon] Scanning: health
+23:39:50 | WARNING | [Amazon] health: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in undefined sales rank ove', bytes=309102). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:50 | INFO | [Amazon] health: 0 products found
+23:39:53 | INFO | [Amazon] Scanning: sport
+23:39:53 | WARNING | [Amazon] sport: no items matched any selector (page_title='Amazon.co.uk Movers and Shakers: The biggest gainers in Sports & Outdoors sales ', bytes=313236). A title mentioning 'Robot Check' or 'Sorry' means Amazon is blocking this IP; otherwise the CSS selectors need updating.
+23:39:53 | INFO | [Amazon] sport: 0 products found
+23:39:56 | INFO | [Amazon] Total products discovered: 0
+23:39:56 | WARNING | No products found.

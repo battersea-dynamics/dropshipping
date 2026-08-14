@@ -1,0 +1,17 @@
+
+ ⛅️ wrangler 4.85.0 (update available 4.123.0)
+──────────────────────────────────────────────
+🌀 Building list of assets...
+✨ Read 1 file from the assets directory C:\Users\nbott\Programming\dropshipping\public
+🌀 Starting asset upload...
+No updated asset files to upload. Proceeding with deployment...
+Total Upload: 4.29 KiB / gzip: 1.67 KiB
+Your Worker has access to the following bindings:
+Binding                                                    Resource          
+env.TREND_RADAR_KV (938dacf4404f4488977bb0c7d7b23335)      KV Namespace      
+env.ASSETS                                                 Assets            
+
+Uploaded dropshipping (10.89 sec)
+Deployed dropshipping triggers (4.57 sec)
+  https://dropshipping.battersea-dynamics.workers.dev
+Current Version ID: c20fcd8d-2961-4b4e-864e-468adb959077

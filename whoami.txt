@@ -1,0 +1,38 @@
+
+ ⛅️ wrangler 4.85.0 (update available 4.123.0)
+──────────────────────────────────────────────
+Getting User settings...
+👋 You are logged in with an OAuth Token, associated with the email battersea.dynamics@gmail.com.
+┌────────────────────────────────────────┬──────────────────────────────────┐
+│ Account Name                           │ Account ID                       │
+├────────────────────────────────────────┼──────────────────────────────────┤
+│ Battersea.dynamics@gmail.com's Account │ 3a5a7c971a3b83cd1a740c380418cc9f │
+└────────────────────────────────────────┴──────────────────────────────────┘
+🔓 Token Permissions:
+Scope (Access)
+- account (read)
+- user (read)
+- workers (write)
+- workers_kv (write)
+- workers_routes (write)
+- workers_scripts (write)
+- workers_tail (read)
+- d1 (write)
+- pages (write)
+- zone (read)
+- ssl_certs (write)
+- ai (write)
+- ai-search (write)
+- ai-search (run)
+- queues (write)
+- pipelines (write)
+- secrets_store (write)
+- artifacts (write)
+- flagship (write)
+- containers (write)
+- cloudchamber (write)
+- connectivity (admin)
+- email_routing (write)
+- email_sending (write)
+- browser (write)
+- offline_access 
