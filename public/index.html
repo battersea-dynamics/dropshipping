@@ -345,7 +345,28 @@ function nowStr() {
 }
 
 function truncate(str, n) {
+  str = String(str ?? '');
   return str.length > n ? str.slice(0, n) + '...' : str;
+}
+
+// Product names and eBay titles are scraped from third-party pages and get
+// injected with innerHTML below — escape them so a title containing markup
+// cannot execute in the dashboard.
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// Only allow links the dashboard is expected to produce.
+function safeUrl(value) {
+  const url = String(value ?? '');
+  return /^https:\/\//i.test(url) ? esc(url) : '#';
+}
+
+function money(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? '£' + n.toFixed(2) : null;
 }
 
 // ── LOAD DATA ─────────────────────────────────────────────────────────────────
@@ -443,11 +464,13 @@ function renderTrendList(signals) {
       <div class="trend-row" onclick="focusSignal(${i})">
         <div class="trend-rank">${i+1}</div>
         <div class="trend-name">
-          ${truncate(s.keyword, 55)}
-          <small>${s.category || ''} · ${s.sources.join(' + ')}</small>
+          ${esc(truncate(s.keyword, 55))}
+          <small>${esc(s.category || '')} · ${esc((s.sources || []).join(' + '))}${
+            Number.isFinite(s.score) ? ' · score ' + s.score : ''
+          }</small>
         </div>
         <div class="trend-score" style="color:${rankColor}">
-          #${s.amazon_rank || '—'}
+          #${esc(s.amazon_rank || '—')}
         </div>
         <div class="trend-change ${strengthClass}">${s.strength}</div>
         <div class="signal-dots">
@@ -534,19 +557,37 @@ function renderAlerts(signals) {
   feed.innerHTML = toShow.map(s => {
     const icon      = s.strength === 'STRONG' ? '🔥' : '📈';
     const amazonLink = s.amazon_url
-      ? `<br><a href="${s.amazon_url}" target="_blank">→ View on Amazon</a>`
+      ? `<br><a href="${safeUrl(s.amazon_url)}" target="_blank" rel="noopener noreferrer">→ View on Amazon</a>`
       : '';
+
+    // eBay is now a price/saturation reading, not a demand reading.
+    const median = money(s.ebay_median_price);
+    const low    = money(s.ebay_low_price);
+    const ebayLine = s.ebay_name
+      ? `<br>🛒 eBay: <a href="${safeUrl(s.ebay_url)}" target="_blank" rel="noopener noreferrer">${esc(truncate(s.ebay_name, 50))}</a>`
+        + (s.ebay_listings ? ` · ${esc(s.ebay_listings)} listings` : '')
+        + (median ? ` · median ${median}` : '')
+        + (low ? ` · from ${low}` : '')
+      : '';
+
+    const reasons = Array.isArray(s.score_reasons) && s.score_reasons.length
+      ? `<br><span style="color:var(--muted)">${esc(s.score_reasons.join(' · '))}</span>`
+      : '';
+
     return `<div class="alert-item">
       <div class="alert-icon">${icon}</div>
       <div>
         <div class="alert-text ${s.strength === 'STRONG' ? 'hot' : ''}">
-          <strong>${truncate(s.keyword, 55)}</strong>
-          <br>#${s.amazon_rank} on Amazon M&S · ${s.category}
-          ${s.ebay_name ? `<br>🛒 eBay: <a href="${s.ebay_url}" target="_blank">${s.ebay_name.slice(0,50)}...</a> · ${s.ebay_watches} watches` : ''}
-          ${s.reddit_title ? `<br>💬 Reddit: <a href="${s.reddit_url}" target="_blank">${s.reddit_title.slice(0,60)}...</a>` : ''}
+          <strong>${esc(truncate(s.keyword, 55))}</strong>
+          ${Number.isFinite(s.score) ? `<span style="color:var(--muted)"> — score ${s.score}/100</span>` : ''}
+          <br>#${esc(s.amazon_rank)} on Amazon M&S · ${esc(s.category)}
+          ${ebayLine}
+          ${s.reddit_title ? `<br>💬 Reddit: <a href="${safeUrl(s.reddit_url)}" target="_blank" rel="noopener noreferrer">${esc(truncate(s.reddit_title, 60))}</a>` : ''}
+          ${s.tiktok_hashtag ? `<br>🎵 TikTok: #${esc(s.tiktok_hashtag)}` : ''}
           ${amazonLink}
+          ${reasons}
         </div>
-        <div class="alert-time">${s.detected_at || '—'}</div>
+        <div class="alert-time">${esc(s.detected_at || '—')}</div>
       </div>
     </div>`;
   }).join('');

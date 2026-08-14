@@ -12,10 +12,13 @@ Usage:
     python trend_radar.py auto   → run on schedule (08:00 + 20:00)
 
 Dependencies:
-    pip install requests beautifulsoup4 schedule
+    pip install -r requirements.txt
+    playwright install chromium
 """
 
 import os
+import re
+import json
 import time
 import logging
 import schedule
@@ -43,8 +46,21 @@ TIKTOK_APP_SECRET = os.getenv("TIKTOK_APP_SECRET", "")
 EBAY_APP_ID  = os.getenv("EBAY_APP_ID", "")
 EBAY_CERT_ID = os.getenv("EBAY_CERT_ID", "")
 
+# Shared secret required by the Worker's POST /api/push endpoint.
+# Must match the value set with: wrangler secret put PUSH_SECRET
+PUSH_SECRET = os.getenv("PUSH_SECRET", "")
+
 SCHEDULE_TIMES      = ["08:00", "20:00"]
 AMAZON_MAX_PRODUCTS = 20
+
+# Each eBay price check is one API call — only run them for the
+# highest-ranked products rather than the whole scan.
+EBAY_MAX_LOOKUPS = 25
+
+# Minimum number of shared meaningful words before a cross-source match is
+# accepted. Below this a "match" is noise: this threshold is what stops the
+# medicube-eye-serum -> Amouage-perfume false positive seen in the 17/05 scan.
+MIN_TOKEN_OVERLAP = 2
 
 AMAZON_CATEGORIES = {
     "beauty":     "beauty",
@@ -72,6 +88,60 @@ HEADERS = {
 }
 
 
+# ── TEXT MATCHING ─────────────────────────────────────────────────────────────
+#
+# Cross-source matching used to compare categories only, which meant every
+# product in a category "matched" every trend in that category. Everything
+# below exists so that a match has to be backed by shared words.
+
+STOPWORDS = {
+    "the", "and", "for", "with", "your", "from", "that", "this", "you", "our",
+    "pack", "set", "pcs", "piece", "pieces", "size", "new", "free", "gift",
+    "gifts", "best", "premium", "quality", "professional", "original", "official",
+    "genuine", "kit", "pro", "plus", "max", "mini", "large", "small", "medium",
+    "black", "white", "blue", "red", "green", "pink", "grey", "gray", "silver",
+    "gold", "colour", "color", "inch", "count", "pcs", "each", "type", "style",
+    "home", "super", "ultra", "heavy", "duty", "multi", "made", "including",
+}
+
+_TOKEN_RE = re.compile(r"[a-z]+")
+
+
+def tokens(text: str) -> set:
+    """Lowercased, de-noised words used for cross-source matching."""
+    if not text:
+        return set()
+    return {
+        t for t in _TOKEN_RE.findall(text.lower())
+        if len(t) > 3 and t not in STOPWORDS
+    }
+
+
+def token_overlap(a: str, b: str) -> int:
+    """How many meaningful words two product/keyword strings share."""
+    return len(tokens(a) & tokens(b))
+
+
+def hashtag_match(product_name: str, hashtag: str) -> bool:
+    """
+    Whether a hashtag genuinely refers to this product.
+
+    Hashtags are written as one run-together word (#retinolserum,
+    #skincareroutine), so plain word-boundary overlap never fires on them.
+    Test containment instead — but containment alone is too loose, because
+    "Resistance Bands" is contained in #bandsofbrothers. So also require the
+    matched words to account for most of the hashtag.
+    """
+    tag = re.sub(r"[^a-z]", "", str(hashtag).lower())
+    if not tag:
+        return False
+    hits = [t for t in tokens(product_name) if t in tag]
+    if not hits:
+        return False
+    coverage = min(1.0, sum(len(t) for t in hits) / len(tag))
+    return coverage >= 0.5
+
+
 # ── LOGGING ───────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
@@ -94,20 +164,60 @@ class Product:
     reddit_title:  Optional[str] = None
     reddit_url:    Optional[str] = None
     reddit_score:  int = 0
-    ebay_name:     Optional[str] = None
-    ebay_url:      Optional[str] = None
-    ebay_sold:     int = 0
-    ebay_price:      float = 0.0
-    tiktok_hashtag:  Optional[str] = None
-    tiktok_posts:    int = 0
+    ebay_name:         Optional[str] = None
+    ebay_url:          Optional[str] = None
+    ebay_listings:     int = 0
+    ebay_median_price: float = 0.0
+    ebay_low_price:    float = 0.0
+    tiktok_hashtag:    Optional[str] = None
+    tiktok_posts:      int = 0
+    pinterest_keyword: Optional[str] = None
     detected_at:   str = field(default_factory=lambda: datetime.now().strftime("%d/%m/%Y %H:%M"))
+
+    # ── SCORING ───────────────────────────────────────────────────────────────
+    # The old rule was: STRONG if len(sources) >= 2 and rank <= 10. Because the
+    # eBay step handed every product an (unrelated) match, len(sources) was
+    # always >= 2, so every top-10 product was reported STRONG. Every component
+    # below now requires a verified match, and each one is shown to the user.
+
+    def score_breakdown(self) -> list:
+        parts = []
+
+        if   self.rank <= 5:  parts.append(("Amazon M&S rank 1-5", 40))
+        elif self.rank <= 15: parts.append(("Amazon M&S rank 6-15", 25))
+        elif self.rank <= 30: parts.append(("Amazon M&S rank 16-30", 10))
+
+        if self.tiktok_hashtag:
+            parts.append((f"TikTok hashtag #{self.tiktok_hashtag}", 20))
+        if self.pinterest_keyword:
+            parts.append((f"Pinterest trend '{self.pinterest_keyword}'", 10))
+        if self.reddit_title:
+            parts.append(("Reddit mention", 10))
+
+        # eBay is a saturation signal, not a demand signal — see eBayScanner.
+        if self.ebay_listings:
+            if self.ebay_listings < 100:
+                parts.append((f"Low eBay competition ({self.ebay_listings} listings)", 15))
+            elif self.ebay_listings > 1000:
+                parts.append((f"Saturated on eBay ({self.ebay_listings} listings)", -15))
+
+        confirmations = sum(
+            1 for x in (self.tiktok_hashtag, self.pinterest_keyword, self.reddit_title) if x
+        )
+        if confirmations >= 2:
+            parts.append((f"Confirmed by {confirmations} independent sources", 15))
+
+        return parts
+
+    @property
+    def score(self) -> int:
+        return max(0, min(100, sum(points for _, points in self.score_breakdown())))
 
     @property
     def strength(self) -> str:
-        sources_count = len(self.sources)
-        if sources_count >= 2 and self.rank <= 10: return "STRONG"
-        if self.rank <= 5:  return "STRONG"
-        if self.rank <= 15: return "MEDIUM"
+        s = self.score
+        if s >= 65: return "STRONG"
+        if s >= 40: return "MEDIUM"
         return "WEAK"
 
     def to_dict(self) -> dict:
@@ -119,15 +229,22 @@ class Product:
             "category":      self.category,
             "sources":       self.sources,
             "strength":      self.strength,
+            "score":         self.score,
+            "score_reasons": [f"{label} ({pts:+d})" for label, pts in self.score_breakdown()],
             "reddit_title":  self.reddit_title,
             "reddit_url":    self.reddit_url,
             "reddit_score":  self.reddit_score,
-            "ebay_name":     self.ebay_name,
-            "ebay_url":      self.ebay_url,
-            "ebay_sold":     self.ebay_sold,
-            "ebay_price":      self.ebay_price,
-            "tiktok_hashtag":  self.tiktok_hashtag,
-            "tiktok_posts":    self.tiktok_posts,
+            "ebay_name":         self.ebay_name,
+            "ebay_url":          self.ebay_url,
+            # The Browse API does not expose watch counts without a separate
+            # App Check grant from eBay. Reported as null rather than faked.
+            "ebay_watches":      None,
+            "ebay_listings":     self.ebay_listings,
+            "ebay_median_price": self.ebay_median_price,
+            "ebay_low_price":    self.ebay_low_price,
+            "tiktok_hashtag":    self.tiktok_hashtag,
+            "tiktok_posts":      self.tiktok_posts,
+            "pinterest_keyword": self.pinterest_keyword,
             "trends_score":  0,
             "trends_growth": 0,
             "detected_at":   self.detected_at,
@@ -149,6 +266,12 @@ class AmazonScanner:
         "div.zg-item-immersion",
         "li[class*='zg-item']",
     ]
+
+    def __init__(self):
+        # One session for all categories — keeps the connection alive and
+        # carries cookies between requests, which reduces bot challenges.
+        self.session = requests.Session()
+        self.session.headers.update(HEADERS)
 
     def scan_all(self) -> list[Product]:
         all_products = []
@@ -173,7 +296,7 @@ class AmazonScanner:
 
     def _scrape_category(self, label: str, slug: str) -> list[Product]:
         url      = self.BASE_URL.format(category=slug)
-        response = requests.Session().get(url, headers=HEADERS, timeout=8)
+        response = self.session.get(url, timeout=15)
         response.raise_for_status()
         soup     = BeautifulSoup(response.text, "html.parser")
         items    = []
@@ -183,6 +306,18 @@ class AmazonScanner:
             if items:
                 log.info(f"[Amazon] Selector: '{selector}' ({len(items)} items)")
                 break
+
+        if not items:
+            # When this happens it is nearly always a bot check rather than a
+            # layout change, and the two need completely different fixes — so
+            # print enough to tell them apart instead of silently returning [].
+            title = (soup.title.get_text(strip=True) if soup.title else "")[:80]
+            log.warning(
+                f"[Amazon] {label}: no items matched any selector "
+                f"(page_title={title!r}, bytes={len(response.text)}). "
+                f"A title mentioning 'Robot Check' or 'Sorry' means Amazon is "
+                f"blocking this IP; otherwise the CSS selectors need updating."
+            )
 
         return [p for item in items for p in [self._parse_item(item, label)] if p]
 
@@ -291,23 +426,28 @@ class TikTokScanner:
 
     def match_product(self, product: object, tiktok_trends: list[dict]) -> Optional[dict]:
         """
-        Checks if a product's category has trending hashtags on TikTok.
-        Returns the most popular matching hashtag or None.
+        Returns the trending hashtag that genuinely relates to this product,
+        or None.
+
+        The previous version accepted `category_match OR keyword_match`, and
+        category_match was true for every product in the category — so every
+        beauty product was credited with the biggest hashtag in beauty. The
+        hashtag must now actually name the product; category only breaks ties
+        between hashtags that already match.
         """
+        name     = getattr(product, "name", "")
         category = getattr(product, "category", "")
-        tokens   = [t for t in product.name.lower().split() if len(t) > 3]
 
         best_match = None
-        best_posts = 0
+        best_key   = (0, 0)   # (same category, post count)
 
         for trend in tiktok_trends:
-            category_match = trend["category"] == category
-            hashtag_lower  = trend["hashtag"].lower()
-            keyword_match  = any(t in hashtag_lower for t in tokens)
-
-            if (category_match or keyword_match) and trend["posts"] > best_posts:
-                best_posts = trend["posts"]
-                best_match = trend
+            if not hashtag_match(name, trend.get("hashtag", "")):
+                continue
+            key = (1 if trend.get("category") == category else 0,
+                   trend.get("posts", 0))
+            if key > best_key:
+                best_key, best_match = key, trend
 
         return best_match
 
@@ -432,14 +572,28 @@ class PinterestScanner:
 
     def match_product(self, product: object, pinterest_trends: list[dict]) -> Optional[dict]:
         """
-        Matches by category — same approach as TikTok.
-        Returns the best-ranked trend matching the product's category, or None.
+        Returns the trending Pinterest keyword that genuinely relates to this
+        product, or None.
+
+        The previous version returned the first trend sharing the product's
+        category, so every product in a category received the same "match".
         """
+        name     = getattr(product, "name", "")
         category = getattr(product, "category", "")
+
+        best_match   = None
+        best_overlap = 0
+
         for trend in pinterest_trends:
-            if trend["category"] == category:
-                return trend
-        return None
+            overlap = token_overlap(name, str(trend.get("keyword", "")))
+            if overlap < 1:
+                continue
+            if overlap < MIN_TOKEN_OVERLAP and trend.get("category") != category:
+                continue
+            if overlap > best_overlap:
+                best_overlap, best_match = overlap, trend
+
+        return best_match
 
 
 # ── GOOGLE TRENDS SCANNER (commented out — activate when ready) ───────────────
@@ -499,41 +653,39 @@ class PinterestScanner:
 #             log.warning(f"[Google Trends] Error for '{query}': {e}")
 #             return {"query": query, "growing": False, "score": 0}
 
-# ── EBAY SCANNER ──────────────────────────────────────────────────────────────
+# ── EBAY PRICE & SATURATION SCANNER ───────────────────────────────────────────
 
 class eBayScanner:
     """
-    Fetches trending items from eBay UK using the Browse API.
-    Signal: items with high watch counts = strong buyer demand.
-    
-    API registration: https://developer.ebay.com (free)
-    Add key to CONFIG section when approved: EBAY_APP_ID
+    Looks up what a product actually sells for on eBay UK, and how many people
+    are already selling it.
+
+    This is deliberately NOT a demand signal, and that is a change from v2.
+    The Browse API's ItemSummary type exposes no sold-count field of any kind —
+    not soldCount, not totalSoldItems, not soldQuantity. (watchCount exists but
+    requires a separate App Check permission grant from eBay.) v2 asked for
+    `sort=newlyListed`, i.e. the newest listings, which by definition have no
+    sales history, and then reported sold_count = 0 for every item forever.
+
+    What this returns instead is directly useful for sourcing decisions:
+        listings      → how saturated the product already is
+        median_price  → the realistic market price
+        low_price     → the price you would have to beat
     """
 
-    # eBay Browse API endpoint
-    API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
+    API_URL  = "https://api.ebay.com/buy/browse/v1/item_summary/search"
     AUTH_URL = "https://api.ebay.com/identity/v1/oauth2/token"
-
-    # Categories to scan (eBay UK category IDs)
-    CATEGORIES = {
-        "beauty":     "26395",   # Health & Beauty
-        "kitchen":    "20625",   # Kitchen & Home
-        "pet":        "1281",    # Pet Supplies
-        "tech":       "58058",   # Consumer Electronics
-        "diy":        "11700",   # Home & Garden
-        "baby":       "2984",    # Baby
-        "automotive": "9800",    # Vehicle Parts & Accessories
-        "music":      "619",     # Musical Instruments
-    }
 
     def __init__(self, app_id: str, cert_id: str):
         self.app_id  = app_id
         self.cert_id = cert_id
         self._token  = None
+        self._token_expires_at = 0.0
+        self.session = requests.Session()
 
     def _get_token(self) -> Optional[str]:
-        """Gets OAuth token for eBay API."""
-        if self._token:
+        """Client-credentials token, cached until shortly before it expires."""
+        if self._token and time.time() < self._token_expires_at:
             return self._token
         try:
             import base64
@@ -541,95 +693,107 @@ class eBayScanner:
                 f"{self.app_id}:{self.cert_id}".encode()
             ).decode()
 
-            resp = requests.post(
+            resp = self.session.post(
                 self.AUTH_URL,
                 headers={
                     "Authorization": f"Basic {credentials}",
-                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Content-Type":  "application/x-www-form-urlencoded",
                 },
                 data="grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope",
-                timeout=10
+                timeout=10,
             )
             resp.raise_for_status()
-            self._token = resp.json().get("access_token")
+            payload = resp.json()
+            self._token = payload.get("access_token")
+            # Renew a minute early rather than waiting for a hard expiry.
+            self._token_expires_at = time.time() + int(payload.get("expires_in", 7200)) - 60
             return self._token
         except Exception as e:
             log.warning(f"[eBay] Token error: {e}")
             return None
 
-    def scan_all(self) -> list[dict]:
+    def price_check(self, product_name: str) -> Optional[dict]:
         """
-        Scans all categories and returns trending items.
-        Each item: { "name": str, "category": str, "sold_count": int,
-                     "price": float, "url": str }
+        Searches eBay UK for this specific product.
+        Returns None when there is no usable match — never a fabricated one.
         """
         token = self._get_token()
         if not token:
-            log.warning("[eBay] No token — check APP_ID and CERT_ID")
-            return []
+            return None
 
-        all_items = []
+        query = self._search_query(product_name)
+        if not query:
+            return None
 
-        for label, cat_id in self.CATEGORIES.items():
-            log.info(f"[eBay] Scanning: {label}")
-            try:
-                items = self._fetch_category(token, label, cat_id)
-                all_items.extend(items)
-                log.info(f"[eBay] {label}: {len(items)} items found")
-                time.sleep(1)
-            except Exception as e:
-                log.warning(f"[eBay] Error scanning {label}: {e}")
+        try:
+            resp = self.session.get(
+                self.API_URL,
+                headers={
+                    "Authorization":           f"Bearer {token}",
+                    "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
+                    "X-EBAY-C-ENDUSERCTX":     "contextualLocation=country%3DGB",
+                },
+                params={
+                    "q":      query,
+                    "limit":  50,
+                    "sort":   "price",
+                    "filter": "buyingOptions:{FIXED_PRICE},itemLocationCountry:GB",
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            log.warning(f"[eBay] Lookup failed for '{truncate(query, 40)}': {e}")
+            return None
 
-        log.info(f"[eBay] Total items discovered: {len(all_items)}")
-        return all_items
+        items = data.get("itemSummaries") or []
 
-    def _fetch_category(self, token: str, label: str, cat_id: str) -> list[dict]:
-        resp = requests.get(
-            self.API_URL,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
-                "X-EBAY-C-ENDUSERCTX": "contextualLocation=country%3DGB",
-            },
-            params={
-                "category_ids": cat_id,
-                "sort":         "newlyListed",
-                "limit":        20,
-                "filter":       "buyingOptions:{FIXED_PRICE}",
-                "fieldgroups":  "BUYING_OPTION_DETAILS",
-            },
-            timeout=10
-        )
-        resp.raise_for_status()
-        data  = resp.json()
-        items = data.get("itemSummaries", [])
+        # Only keep listings that actually relate to the product. Without this
+        # guard eBay's fuzzy search happily returns a GBP 250 perfume for an
+        # eye-serum query, which is exactly how v2 produced its false matches.
+        relevant = [
+            i for i in items
+            if token_overlap(product_name, i.get("title", "")) >= MIN_TOKEN_OVERLAP
+        ]
+        if not relevant:
+            log.info(f"[eBay] No relevant listings for '{truncate(query, 40)}'")
+            return None
 
-        results = []
-        for item in items:
-            price = 0.0
-            if item.get("price"):
-                try:
-                    price = float(item["price"].get("value", 0))
-                except (ValueError, TypeError):
-                    pass
+        prices = sorted(p for p in (self._price_of(i) for i in relevant) if p > 0)
+        if not prices:
+            return None
 
-            sold_count = item.get("soldCount") or item.get("totalSoldItems") or item.get("soldQuantity") or 0
-            try:
-                sold_count = int(sold_count)
-            except (TypeError, ValueError):
-                sold_count = 0
+        cheapest = min(relevant, key=lambda i: self._price_of(i) or float("inf"))
 
-            results.append({
-                "name":       item.get("title", ""),
-                "category":   label,
-                "sold_count": sold_count,
-                "price":      price,
-                "url":        item.get("itemWebUrl", ""),
-                "item_id":    item.get("itemId", ""),
-            })
+        return {
+            "query":        query,
+            "listings":     int(data.get("total") or len(items)),
+            "matched":      len(relevant),
+            "median_price": round(prices[len(prices) // 2], 2),
+            "low_price":    round(prices[0], 2),
+            "name":         cheapest.get("title", ""),
+            "url":          cheapest.get("itemWebUrl", ""),
+        }
 
-        results.sort(key=lambda x: x["sold_count"], reverse=True)
-        return results
+    @staticmethod
+    def _price_of(item: dict) -> float:
+        try:
+            return float((item.get("price") or {}).get("value", 0) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def _search_query(product_name: str) -> str:
+        """
+        Amazon titles are long and marketing-heavy ("... for Fine Lines, Uneven
+        Skin Tone, Korean Skin Care 1.01fl.oz"). Searching eBay with the whole
+        string returns nothing, so use the most distinctive words only.
+        """
+        words = [w for w in _TOKEN_RE.findall(product_name.lower())
+                 if len(w) > 3 and w not in STOPWORDS]
+        return " ".join(words[:5])
+
 
 # ── REDDIT SCANNER ────────────────────────────────────────────────────────────
 
@@ -865,6 +1029,10 @@ class TrendRadar:
             for product in products:
                 match = self.tiktok.match_product(product, tiktok_trends)
                 if match:
+                    # v2 appended the source but never stored the hashtag, so
+                    # tiktok_hashtag was null in every scan ever pushed.
+                    product.tiktok_hashtag = match["hashtag"]
+                    product.tiktok_posts   = match.get("posts", 0)
                     product.sources.append("TikTok")
                     log.info(f"[TikTok] Match: '{truncate(product.name, 40)}' → #{match['hashtag']} ({match['posts']} posts)")
 
@@ -875,26 +1043,36 @@ class TrendRadar:
             for product in products:
                 match = self.pinterest.match_product(product, pinterest_trends)
                 if match:
+                    product.pinterest_keyword = str(match["keyword"])
                     product.sources.append("Pinterest")
                     log.info(f"[Pinterest] Match: '{truncate(product.name, 40)}' → {match['keyword']}")
         else:
             log.warning("[Pinterest] No trends returned — skipping")
 
-        # Step 4: eBay cross-reference
+        # Step 4: eBay price + saturation check on the highest-ranked products
         if self.ebay:
-            log.info("[4/5] Scanning eBay UK trending items...")
-            ebay_items = self.ebay.scan_all()
-            for product in products:
-                match = self._match_ebay(product.name, ebay_items, product.category)
-                if match:
-                    product.ebay_name  = match["name"]
-                    product.ebay_url   = match["url"]
-                    product.ebay_sold  = match["sold_count"]
-                    product.ebay_price = match["price"]
-                    product.sources.append("eBay")
-                    log.info(f"[eBay] Match: '{truncate(product.name, 40)}' — {match['sold_count']} sold")
+            budget = min(len(products), EBAY_MAX_LOOKUPS)
+            log.info(f"[4/5] eBay price check (top {budget} products)...")
+            priced = 0
+            for product in products[:budget]:
+                info = self.ebay.price_check(product.name)
+                if not info:
+                    continue
+                product.ebay_name         = info["name"]
+                product.ebay_url          = info["url"]
+                product.ebay_listings     = info["listings"]
+                product.ebay_median_price = info["median_price"]
+                product.ebay_low_price    = info["low_price"]
+                product.sources.append("eBay")
+                priced += 1
+                log.info(
+                    f"[eBay] '{truncate(product.name, 40)}' — {info['listings']} listings, "
+                    f"median GBP {info['median_price']}, low GBP {info['low_price']}"
+                )
+                time.sleep(0.5)
+            log.info(f"[eBay] Priced {priced}/{budget} products")
         else:
-            log.info("[4/5] eBay scanning disabled — add EBAY_APP_ID to enable")
+            log.info("[4/5] eBay price check disabled — add EBAY_APP_ID to enable")
 
         log.info("[5/5] Saving results and sending alert...")
         self._save(products)
@@ -911,24 +1089,49 @@ class TrendRadar:
             "signals":       [p.to_dict() for p in products],
         }
 
+        # Write a local copy first, so a scan is never lost to a network error.
+        filename = f"radar_results_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
         try:
-            resp = requests.post(CLOUDFLARE_PUSH_URL, json=data, timeout=15)
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            log.info(f"[Save] Wrote {filename}")
+        except Exception as e:
+            log.warning(f"[Save] Could not write {filename}: {e}")
+
+        if not CLOUDFLARE_PUSH_URL:
+            log.warning("[Save] CLOUDFLARE_PUSH_URL not set — skipping dashboard push")
+            return
+        if not PUSH_SECRET:
+            log.error(
+                "[Save] PUSH_SECRET not set — the Worker rejects unauthenticated "
+                "pushes. Add PUSH_SECRET to .env, and set the same value on the "
+                "Worker with: wrangler secret put PUSH_SECRET"
+            )
+            return
+
+        try:
+            resp = requests.post(
+                CLOUDFLARE_PUSH_URL,
+                json=data,
+                headers={"X-Push-Secret": PUSH_SECRET},
+                timeout=15,
+            )
             if resp.status_code == 200:
                 log.info("[Save] Pushed to Cloudflare KV")
+            elif resp.status_code == 401:
+                log.error(
+                    "[Save] Worker rejected the push secret (401) — the value in "
+                    ".env does not match `wrangler secret put PUSH_SECRET`"
+                )
+            elif resp.status_code == 503:
+                log.error(
+                    "[Save] Worker has no PUSH_SECRET configured (503) — run: "
+                    "wrangler secret put PUSH_SECRET"
+                )
             else:
-                log.warning(f"[Save] Cloudflare push failed: {resp.status_code}")
+                log.warning(f"[Save] Cloudflare push failed: {resp.status_code} {resp.text[:200]}")
         except Exception as e:
             log.warning(f"[Save] Cloudflare push error: {e}")
-
-    def _match_ebay(self, product_name: str, ebay_items: list[dict], category: str = "") -> Optional[dict]:
-        """
-        Matches by category — finds the most watched eBay item in the same category.
-        More reliable than name matching across platforms.
-        """
-        category_items = [i for i in ebay_items if i.get("category") == category]
-        if not category_items:
-            return None
-        return max(category_items, key=lambda x: x.get("sold_count", 0))
 
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────

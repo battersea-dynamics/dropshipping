@@ -1,0 +1,9 @@
+# pip install -r requirements.txt
+# then once, to download the browser Playwright drives:
+#   playwright install chromium
+
+requests>=2.32
+beautifulsoup4>=4.12
+python-dotenv>=1.0
+schedule>=1.2
+playwright>=1.44

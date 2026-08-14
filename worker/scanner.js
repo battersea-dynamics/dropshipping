@@ -1,185 +1,165 @@
 /**
- * TREND RADAR v2 — Cloudflare Worker
+ * TREND RADAR v3 — Cloudflare Worker
  * ====================================
  * Routes:
- *   GET  /              → serve dashboard HTML
- *   GET  /api/results   → return latest scan from KV
- *   POST /api/push      → receive scan results from Python, store in KV
+ *   GET  /                    → dashboard (served from ./public via [assets])
+ *   GET  /api/health          → config sanity check, no secrets returned
+ *   GET  /api/results         → latest scan from KV (public, read-only)
+ *   POST /api/push            → store a scan in KV (requires X-Push-Secret)
+ *   GET  /ebay/notifications  → eBay marketplace-account-deletion challenge
  *
- * To enable automatic daily scans, uncomment the `scheduled` block
- * and add this to wrangler.toml:
- *   [triggers]
- *   crons = ["0 6 * * *"]
+ * Secrets — set these with `wrangler secret put <NAME>`, never in this file:
+ *   PUSH_SECRET               required, or /api/push refuses every request
+ *   EBAY_VERIFICATION_TOKEN   required only if the eBay webhook is in use
+ *
+ * v2 notes, for context: /api/push had no authentication at all, so anyone
+ * who knew the URL could overwrite the dashboard; the eBay verification token
+ * was hardcoded in this file in a public repo; and the dashboard HTML was
+ * re-fetched from raw.githubusercontent.com on every single request.
  */
 
-export default {
+const JSON_HEADERS = {
+  'Content-Type': 'application/json; charset=utf-8',
+  'Access-Control-Allow-Origin': '*',
+  'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff',
+};
 
+// A full 10-category scan is roughly 150 KB. This is a generous ceiling that
+// still stops anyone filling the KV namespace with a single request.
+const MAX_PUSH_BYTES = 2_000_000;
+
+export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    const jsonHeaders = {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    };
-
-    // ── GET / → serve dashboard ──────────────────────────────────────
-    if (url.pathname === '/' || url.pathname === '/index.html') {
-      const resp = await fetch(
-        'https://raw.githubusercontent.com/battersea-dynamics/dropshipping/main/index.html?v=' + Date.now()
+    // ── GET / → dashboard ────────────────────────────────────────────────────
+    if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
+      if (env.ASSETS) return env.ASSETS.fetch(request);
+      return new Response(
+        'Dashboard asset binding missing — check [assets] in wrangler.toml, then redeploy.',
+        { status: 500, headers: { 'Content-Type': 'text/plain' } }
       );
-      const html = await resp.text();
-      return new Response(html, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    }
+
+    // ── GET /api/health → is this Worker configured correctly? ───────────────
+    if (url.pathname === '/api/health') {
+      return json({
+        status: 'ok',
+        version: 'v3',
+        // Booleans only — never echo the values themselves.
+        push_secret_configured: Boolean(env.PUSH_SECRET),
+        ebay_token_configured: Boolean(env.EBAY_VERIFICATION_TOKEN),
+        kv_bound: Boolean(env.TREND_RADAR_KV),
+        assets_bound: Boolean(env.ASSETS),
       });
     }
 
-    // ── GET /api/results → return latest scan ───────────────────────
+    // ── GET /api/results → latest scan (public) ──────────────────────────────
     if (url.pathname === '/api/results' && request.method === 'GET') {
       const data = await env.TREND_RADAR_KV.get('latest_scan');
       if (!data) {
-        return new Response(JSON.stringify({
-          status:        'empty',
-          message:       'No scan yet. Run: python trend_radar.py',
-          signals:       [],
+        return json({
+          status: 'empty',
+          message: 'No scan yet. Run: python trend_radar.py',
+          signals: [],
           keywords_used: [],
-        }), { headers: jsonHeaders });
+        });
       }
-      return new Response(data, { headers: jsonHeaders });
+      return new Response(data, { headers: JSON_HEADERS });
     }
 
-    // ── POST /api/push → receive results from Python ─────────────────
-    if (url.pathname === '/api/push' && request.method === 'POST') {
-      const body = await request.json();
+    // ── POST /api/push → store a scan (authenticated) ────────────────────────
+    if (url.pathname === '/api/push') {
+      if (request.method !== 'POST') {
+        return json({ error: 'method_not_allowed' }, 405);
+      }
+
+      // Fail closed. If the secret was never set, the endpoint stays shut
+      // rather than silently reverting to v2's open-to-the-world behaviour.
+      if (!env.PUSH_SECRET) {
+        return json({
+          error: 'push_disabled',
+          message: 'PUSH_SECRET is not configured. Run: wrangler secret put PUSH_SECRET',
+        }, 503);
+      }
+
+      if (!timingSafeEqual(request.headers.get('X-Push-Secret') || '', env.PUSH_SECRET)) {
+        return json({ error: 'unauthorized' }, 401);
+      }
+
+      if (Number(request.headers.get('Content-Length') || 0) > MAX_PUSH_BYTES) {
+        return json({ error: 'payload_too_large' }, 413);
+      }
+
+      const raw = await request.text();
+      if (raw.length > MAX_PUSH_BYTES) {
+        return json({ error: 'payload_too_large' }, 413);
+      }
+
+      let body;
+      try {
+        body = JSON.parse(raw);
+      } catch {
+        return json({ error: 'invalid_json' }, 400);
+      }
+
+      if (!body || typeof body !== 'object' || !Array.isArray(body.signals)) {
+        return json({ error: 'invalid_payload', message: 'Expected { signals: [...] }' }, 400);
+      }
+
+      body.received_at = new Date().toISOString();
       await env.TREND_RADAR_KV.put('latest_scan', JSON.stringify(body));
-      return new Response(JSON.stringify({ status: 'saved' }), { headers: jsonHeaders });
+      return json({ status: 'saved', signals: body.signals.length });
     }
 
-    // ── GET /ebay/notifications → eBay marketplace deletion endpoint ──────────
+    // ── GET /ebay/notifications → eBay account-deletion webhook ──────────────
     if (url.pathname === '/ebay/notifications') {
       const challengeCode = url.searchParams.get('challenge_code');
+
       if (challengeCode) {
-        // Respond to eBay's challenge with hash
-        const token = 'TrendRadar2026Secureaaaaaaaaaaaaa';
-        const endpoint = 'https://dropshipping.battersea-dynamics.workers.dev/ebay/notifications';
-        const hash = await crypto.subtle.digest(
+        const token = env.EBAY_VERIFICATION_TOKEN;
+        if (!token) {
+          return json({
+            error: 'ebay_token_not_configured',
+            message: 'Run: wrangler secret put EBAY_VERIFICATION_TOKEN',
+          }, 503);
+        }
+        // eBay hashes challenge + token + the endpoint URL it called.
+        // Derive the endpoint from the request so it cannot drift out of sync.
+        const endpoint = `${url.origin}${url.pathname}`;
+        const digest = await crypto.subtle.digest(
           'SHA-256',
           new TextEncoder().encode(challengeCode + token + endpoint)
         );
-        const hashArray = Array.from(new Uint8Array(hash));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        return new Response(
-          JSON.stringify({ challengeResponse: hashHex }),
-          { headers: { 'Content-Type': 'application/json' } }
-        );
+        const challengeResponse = [...new Uint8Array(digest)]
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+        return json({ challengeResponse });
       }
+
+      // Real deletion notifications arrive as POSTs; acknowledge them.
       return new Response('OK', { status: 200 });
     }
 
-    // ── Fallback ──────────────────────────────────────────────────────
-    return new Response(
-      JSON.stringify({ status: 'ok', message: 'Trend Radar API v2' }),
-      { headers: jsonHeaders }
-    );
+    return json({ status: 'ok', message: 'Trend Radar API v3' });
   },
-
-  // ── CRON TRIGGER (disabled — enable when ready for full automation) ─
-  // async scheduled(event, env, ctx) {
-  //   await runDiscoveryScan(env);
-  // },
 };
 
-
-// ── DISCOVERY SCAN (runs inside Worker when cron is enabled) ──────────────────
-
-async function runDiscoveryScan(env) {
-  const categories = [
-  'health', 'beauty', 'kitchen', 'electronics', 'pet-supplies',
-  'sporting-goods', 'toys', 'apparel', 'garden', 'diy',
-  'office-products', 'baby', 'automotive', 'musical-instruments',
-  'luggage', 'jewelry'
-];
-  const products   = [];
-
-  for (const cat of categories) {
-    try {
-      const url  = `https://www.amazon.co.uk/gp/movers-and-shakers/${cat}`;
-      const resp = await fetch(url, {
-        headers: {
-          'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept-Language': 'en-GB,en;q=0.9',
-          'Accept':          'text/html',
-        }
-      });
-      const html = await resp.text();
-
-      const nameMatches = [...html.matchAll(/class="p13n-sc-truncate[^"]*"[^>]*>([^<]{10,100})</g)];
-      const rankMatches = [...html.matchAll(/class="zg-bdg-text[^"]*"[^>]*>#?(\d+)</g)];
-
-      nameMatches.slice(0, 15).forEach((m, i) => {
-        products.push({
-          keyword:       m[1].trim(),
-          amazon_name:   m[1].trim(),
-          amazon_rank:   parseInt(rankMatches[i]?.[1] || i + 1),
-          category:      cat,
-          sources:       ['Amazon M&S'],
-          strength:      parseInt(rankMatches[i]?.[1] || 99) <= 5 ? 'STRONG' : 'MEDIUM',
-          trends_score:  0,
-          trends_growth: 0,
-          detected_at:   new Date().toLocaleString('en-GB'),
-        });
-      });
-
-      await sleep(2000);
-    } catch (e) {
-      console.error(`Amazon error for ${cat}:`, e.message);
-    }
-  }
-
-  const data = {
-    status:        'ok',
-    scan_date:     new Date().toLocaleString('en-GB'),
-    keywords_used: [],
-    signals:       products,
-  };
-
-  await env.TREND_RADAR_KV.put('latest_scan', JSON.stringify(data));
-  await sendTelegram(data, env);
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), { status, headers: JSON_HEADERS });
 }
 
-
-// ── TELEGRAM ──────────────────────────────────────────────────────────────────
-
-async function sendTelegram(data, env) {
-  const token  = env.TELEGRAM_BOT_TOKEN;
-  const chatId = env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
-
-  const signals = data.signals || [];
-  const strong  = signals.filter(s => s.strength === 'STRONG');
-
-  await tgSend(token, chatId,
-    `TREND RADAR — ${data.scan_date}\n` +
-    `Products found: ${signals.length}\n` +
-    `Strong signals: ${strong.length}`
-  );
-
-  for (const s of strong.slice(0, 5)) {
-    await tgSend(token, chatId,
-      `#${s.amazon_rank} ${s.amazon_name?.slice(0, 60)}\n` +
-      `Category: ${s.category} | ${s.strength}`
-    );
-    await sleep(500);
-  }
-}
-
-async function tgSend(token, chatId, text) {
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ chat_id: chatId, text }),
-  });
-}
-
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+/**
+ * Constant-time comparison, so the response time of a wrong secret does not
+ * reveal how many leading characters were correct.
+ */
+function timingSafeEqual(a, b) {
+  const encoder = new TextEncoder();
+  const left = encoder.encode(a);
+  const right = encoder.encode(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+  return diff === 0;
 }

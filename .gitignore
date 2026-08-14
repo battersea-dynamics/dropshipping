@@ -1,3 +1,24 @@
+# Secrets — never commit
 .env
-*.json
+.env.*
+!.env.example
+
+# Wrangler local state (contains your Cloudflare account id)
+.wrangler/
+
+# Scan output — regenerated on every run
+radar_results_*.json
+
+# Python
 __pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editors / OS / tooling
+.DS_Store
+.vscode/
+.claude/settings.local.json
+
+# Staging area for files to delete by hand
+_to_delete/

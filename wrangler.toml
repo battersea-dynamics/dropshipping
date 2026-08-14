@@ -1,10 +1,18 @@
 name = "dropshipping"
 main = "worker/scanner.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-05-01"
+
+# The dashboard is now shipped with the Worker instead of being fetched from
+# raw.githubusercontent.com on every request.
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
 [[kv_namespaces]]
 binding = "TREND_RADAR_KV"
 id = "938dacf4404f4488977bb0c7d7b23335"
 
-[vars]
-TELEGRAM_CHAT_ID = "8739473584"
+# Secrets live in Cloudflare, not in this file. Set them with:
+#   wrangler secret put PUSH_SECRET
+#   wrangler secret put EBAY_VERIFICATION_TOKEN
+# Check they are set:  curl https://<worker>/api/health

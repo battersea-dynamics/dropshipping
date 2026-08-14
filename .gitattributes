@@ -1,0 +1,7 @@
+# Normalise line endings. Without this, editing on Windows rewrites every line
+# of every file and `git status` shows the whole repo as modified when nothing
+# has actually changed.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
