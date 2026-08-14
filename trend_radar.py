@@ -21,14 +21,32 @@ import re
 import json
 import time
 import logging
-import schedule
 import requests
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
+
+# Playwright is only needed by the TikTok and Pinterest scanners. A missing
+# install used to stop the whole program from starting, taking the working
+# Amazon scan down with it. Now those two sources just skip themselves.
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    sync_playwright = None
+    PLAYWRIGHT_AVAILABLE = False
+
+# `schedule` is only needed by `python trend_radar.py auto`. Same reasoning:
+# a missing scheduler must not stop someone running a single scan by hand.
+try:
+    import schedule
+    SCHEDULE_AVAILABLE = True
+except ImportError:
+    schedule = None
+    SCHEDULE_AVAILABLE = False
+
 load_dotenv(override=True)
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -62,18 +80,31 @@ EBAY_MAX_LOOKUPS = 25
 # medicube-eye-serum -> Amouage-perfume false positive seen in the 17/05 scan.
 MIN_TOKEN_OVERLAP = 2
 
+# Each category lists the Amazon URL slugs to try, in order. The first one that
+# Amazon actually recognises is used, and which one worked is logged.
+#
+# This is a list rather than a single value because slugs go stale silently:
+# "health-personal-care" is the US slug and Amazon UK does not recognise it —
+# the page still returns 200, but its title reads "the biggest gainers in
+# undefined sales rank", and the category returns nothing. That went unnoticed
+# for months.
 AMAZON_CATEGORIES = {
-    "beauty":     "beauty",
-    "kitchen":    "kitchen",
-    "pet":        "pet-supplies",
-    "tech":       "electronics",
-    "diy":        "diy",
-    "baby":       "baby",
-    "automotive": "automotive",
-    "music":      "musical-instruments",
-    "health":     "health-personal-care",
-    "sport":      "sports",
+    "beauty":     ["beauty"],
+    "kitchen":    ["kitchen"],
+    "pet":        ["pet-supplies"],
+    "tech":       ["electronics"],
+    "diy":        ["diy"],
+    "baby":       ["baby"],
+    "automotive": ["automotive"],
+    "music":      ["musical-instruments"],
+    "health":     ["drugstore", "health-personal-care", "beauty"],
+    "sport":      ["sports"],
 }
+
+# Amazon prints this inside the (otherwise correct) product grid when it has no
+# data to show. It is not an error and not a block — there is simply nothing
+# there, and no code change can fix it.
+AMAZON_EMPTY_LIST_MESSAGE = "there are no movers and shakers available"
 
 HEADERS = {
     "User-Agent": (
@@ -267,18 +298,36 @@ class AmazonScanner:
         "li[class*='zg-item']",
     ]
 
+    # A real Movers & Shakers page is ~300 KB. Anything tiny is a bot check.
+    MIN_REAL_PAGE_BYTES = 50_000
+
     def __init__(self):
         # One session for all categories — keeps the connection alive and
         # carries cookies between requests, which reduces bot challenges.
+        # A cold, cookie-less request gets served a bot-check page instead.
         self.session = requests.Session()
         self.session.headers.update(HEADERS)
+        # Per-category outcome, so the Telegram alert and the log can say *why*
+        # a scan came back empty instead of just reporting zero.
+        self.notes: list = []
 
-    def scan_all(self) -> list[Product]:
+    def warm_up(self) -> None:
+        """Pick up cookies from the homepage the way a browser would."""
+        try:
+            self.session.get("https://www.amazon.co.uk/", timeout=15)
+            time.sleep(2)
+        except Exception as e:
+            log.warning(f"[Amazon] Warm-up request failed, continuing anyway: {e}")
+
+    def scan_all(self) -> list:
+        self.notes = []
+        self.warm_up()
+
         all_products = []
-        for label, slug in AMAZON_CATEGORIES.items():
+        for label, slugs in AMAZON_CATEGORIES.items():
             log.info(f"[Amazon] Scanning: {label}")
             try:
-                products = self._scrape_category(label, slug)
+                products = self._scrape_category(label, slugs)
                 all_products.extend(products)
                 log.info(f"[Amazon] {label}: {len(products)} products found")
                 time.sleep(3)
@@ -286,40 +335,101 @@ class AmazonScanner:
                 log.warning(f"[Amazon] Error scanning {label}: {e} — retrying in 5s")
                 time.sleep(5)
                 try:
-                    products = self._scrape_category(label, slug)
+                    products = self._scrape_category(label, slugs)
                     all_products.extend(products)
                     log.info(f"[Amazon] {label} (retry): {len(products)} products found")
                 except Exception as e2:
                     log.warning(f"[Amazon] {label} retry failed: {e2} — skipping")
+                    self.notes.append((label, "request failed"))
+
         log.info(f"[Amazon] Total products discovered: {len(all_products)}")
         return all_products
 
-    def _scrape_category(self, label: str, slug: str) -> list[Product]:
-        url      = self.BASE_URL.format(category=slug)
-        response = self.session.get(url, timeout=15)
-        response.raise_for_status()
-        soup     = BeautifulSoup(response.text, "html.parser")
-        items    = []
+    def _scrape_category(self, label: str, slugs) -> list:
+        """
+        Tries each candidate slug until Amazon recognises one.
 
-        for selector in self.SELECTORS:
-            items = soup.select(selector)[:AMAZON_MAX_PRODUCTS]
-            if items:
-                log.info(f"[Amazon] Selector: '{selector}' ({len(items)} items)")
-                break
+        Distinguishes four different failures that all used to look identical.
+        Getting these confused costs real time: an empty list from Amazon and a
+        stale CSS selector produce the same "0 products" but need opposite
+        responses (wait vs. rewrite the parser).
+        """
+        if isinstance(slugs, str):
+            slugs = [slugs]
 
-        if not items:
-            # When this happens it is nearly always a bot check rather than a
-            # layout change, and the two need completely different fixes — so
-            # print enough to tell them apart instead of silently returning [].
-            title = (soup.title.get_text(strip=True) if soup.title else "")[:80]
-            log.warning(
-                f"[Amazon] {label}: no items matched any selector "
-                f"(page_title={title!r}, bytes={len(response.text)}). "
-                f"A title mentioning 'Robot Check' or 'Sorry' means Amazon is "
-                f"blocking this IP; otherwise the CSS selectors need updating."
-            )
+        for slug in slugs:
+            url      = self.BASE_URL.format(category=slug)
+            response = self.session.get(url, timeout=15)
+            response.raise_for_status()
+            html  = response.text
+            soup  = BeautifulSoup(html, "html.parser")
+            title = soup.title.get_text(strip=True) if soup.title else ""
 
-        return [p for item in items for p in [self._parse_item(item, label)] if p]
+            # 1. Bot check — Amazon served a stub page instead of the real one.
+            if len(html) < self.MIN_REAL_PAGE_BYTES:
+                log.warning(
+                    f"[Amazon] {label}: BLOCKED — got a {len(html)}-byte stub instead of "
+                    f"the real page (title={title!r}). Amazon is refusing this request. "
+                    f"Wait a few minutes and retry."
+                )
+                self.notes.append((label, "blocked by Amazon"))
+                return []
+
+            # 2. Slug not recognised — page loads, but for no real category.
+            if "undefined sales rank" in title:
+                log.warning(f"[Amazon] {label}: slug '{slug}' not recognised by Amazon UK")
+                continue
+
+            if slug != slugs[0]:
+                log.info(f"[Amazon] {label}: slug '{slug}' works — update AMAZON_CATEGORIES")
+
+            # 3. Amazon has no data. Correct page, correct grid, nothing in it.
+            if AMAZON_EMPTY_LIST_MESSAGE in html:
+                log.warning(
+                    f"[Amazon] {label}: Amazon says there are no movers and shakers in "
+                    f"this category right now. This is NOT a code problem and NOT a "
+                    f"block — there is nothing to scrape. Try again later."
+                )
+                self.notes.append((label, "Amazon returned an empty list"))
+                return []
+
+            # 4. Parse.
+            items = []
+            for selector in self.SELECTORS:
+                items = soup.select(selector)[:AMAZON_MAX_PRODUCTS]
+                if items:
+                    log.info(f"[Amazon] Selector: '{selector}' ({len(items)} items)")
+                    break
+
+            if not items:
+                grid = soup.select_one(".p13n-desktop-grid")
+                if grid is None:
+                    log.warning(
+                        f"[Amazon] {label}: LAYOUT CHANGED — the '.p13n-desktop-grid' "
+                        f"container is gone from the page. The selectors in "
+                        f"AmazonScanner.SELECTORS need rewriting."
+                    )
+                    self.notes.append((label, "page layout changed"))
+                else:
+                    log.warning(
+                        f"[Amazon] {label}: the product grid exists but no rows matched "
+                        f"any selector. Amazon has changed the rows inside the grid."
+                    )
+                    self.notes.append((label, "grid rows not recognised"))
+                return []
+
+            parsed = [p for item in items for p in [self._parse_item(item, label)] if p]
+            if not parsed:
+                log.warning(
+                    f"[Amazon] {label}: found {len(items)} rows but could not read a "
+                    f"name and rank from any of them — _parse_item needs updating."
+                )
+                self.notes.append((label, "rows found but unreadable"))
+            return parsed
+
+        log.warning(f"[Amazon] {label}: none of the slugs {slugs} are recognised")
+        self.notes.append((label, "no working URL"))
+        return []
 
     def _parse_item(self, item, category: str) -> Optional[Product]:
         rank_el = (
@@ -353,6 +463,7 @@ class AmazonScanner:
             sources  = ["Amazon M&S"]
         )
 
+
 # ── TIKTOK SCANNER ────────────────────────────────────────────────────────────
 
 class TikTokScanner:
@@ -379,6 +490,11 @@ class TikTokScanner:
         Fetches top trending hashtags from TikTok Creative Center via Playwright.
         Returns: [{ "hashtag": str, "posts": int, "category": str, "rank": int }]
         """
+        if not PLAYWRIGHT_AVAILABLE:
+            log.warning("[TikTok] Skipped — Playwright is not installed. "
+                        "To enable: pip install playwright && playwright install chromium")
+            return []
+
         results = []
         try:
             with sync_playwright() as p:
@@ -496,6 +612,11 @@ class PinterestScanner:
         Returns: [{ "keyword": str, "category": str, "rank": int }]
         Logs a warning and returns [] on any error — never crashes.
         """
+        if not PLAYWRIGHT_AVAILABLE:
+            log.warning("[Pinterest] Skipped — Playwright is not installed. "
+                        "To enable: pip install playwright && playwright install chromium")
+            return []
+
         results = []
         try:
             with sync_playwright() as p:
@@ -997,8 +1118,32 @@ class TrendRadar:
         products = self.amazon.scan_all()
 
         if not products:
-            log.warning("No products found.")
-            self.telegram.send("TREND RADAR — Scan failed. No products returned from Amazon.")
+            # Say *why* it was empty. "0 products" alone is not actionable, and
+            # the different causes need opposite responses.
+            reasons = {}
+            for _, reason in getattr(self.amazon, "notes", []):
+                reasons[reason] = reasons.get(reason, 0) + 1
+
+            if reasons:
+                summary = "; ".join(f"{n} categories: {r}" for r, n in
+                                    sorted(reasons.items(), key=lambda x: -x[1]))
+            else:
+                summary = "no diagnosis recorded"
+
+            log.warning(f"No products found — {summary}")
+
+            if "Amazon returned an empty list" in reasons:
+                log.warning(
+                    "Amazon itself has no movers & shakers data right now. Nothing "
+                    "is broken on your side — re-run the scan another time of day."
+                )
+            if "blocked by Amazon" in reasons:
+                log.warning(
+                    "Amazon is refusing these requests. Wait a while before retrying, "
+                    "and avoid running back-to-back scans."
+                )
+
+            self.telegram.send(f"TREND RADAR — no products this scan.\n{summary}")
             return []
 
         products.sort(key=lambda p: p.rank)
@@ -1150,6 +1295,10 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) > 1 and sys.argv[1] == "auto":
+        if not SCHEDULE_AVAILABLE:
+            log.error("Scheduled mode needs the 'schedule' package. "
+                      "Run: pip install schedule    (a one-off scan works without it)")
+            sys.exit(1)
         log.info("TREND RADAR v2 — Scheduler mode")
         log.info(f"Scans scheduled at: {', '.join(SCHEDULE_TIMES)}")
         for t in SCHEDULE_TIMES:

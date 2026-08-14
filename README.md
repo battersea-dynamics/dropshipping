@@ -114,9 +114,27 @@ removed: Amazon blocks datacenter IPs, and Cloudflare's egress is a datacenter
 IP, so it would never have returned data. Scheduling options that do work are
 in `RESTART_HERE.md`.
 
-**If a scan returns no products,** the log now prints the page title and byte
-count per category. A title mentioning "Robot Check" or "Sorry" means Amazon
-is blocking the IP — a different problem from the CSS selectors going stale.
+**If a scan returns no products,** the log names which of four causes it was.
+They need opposite responses, and two of them were confused for each other on
+14/08/2026 — costing an evening — so the scanner now tells them apart itself:
+
+| Log says | Means | Do |
+|---|---|---|
+| `Amazon returned an empty list` | Correct page, correct grid, Amazon has no data | Nothing. Retry another time of day. |
+| `blocked by Amazon` | Served a small stub page instead of the real one | Wait; don't run back-to-back scans |
+| `page layout changed` | `.p13n-desktop-grid` is gone | Rewrite `AmazonScanner.SELECTORS` |
+| `grid rows not recognised` | Grid is there, rows aren't | Rewrite the row selectors only |
+
+`debug_amazon.py` re-checks this by hand and saves the page for inspection.
+
+**Category URLs go stale silently.** `AMAZON_CATEGORIES` holds a *list* of
+candidate slugs per category and uses the first Amazon recognises. A page whose
+title reads "the biggest gainers in **undefined** sales rank" is a dead slug
+returning 200 — which is how `health` sat broken for months without a single
+error. When a fallback slug works, the log says so.
+
+**Playwright is optional.** TikTok and Pinterest skip themselves if it isn't
+installed, rather than stopping the whole scan.
 
 ## Security
 
