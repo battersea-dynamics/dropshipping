@@ -150,6 +150,8 @@
   .sdot { width: 6px; height: 6px; border-radius: 1px; background: var(--border); }
   .sdot.amazon { background: var(--accent); }
   .sdot.trends { background: var(--warm); }
+  .sdot.tiktok { background: var(--warm); }
+  .sdot.ebay   { background: #4a9eff; }
 
   .sparkline-wrap { padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
   .spark-label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; }
@@ -254,12 +256,12 @@
     <div class="metric-card">
       <div class="metric-label">Strong Signals</div>
       <div class="metric-value green" id="m-signals">0</div>
-      <div class="metric-sub">rank 1–5</div>
+      <div class="metric-sub">score 65+</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Amazon M&S</div>
-      <div class="metric-value red" id="m-amazon">0</div>
-      <div class="metric-sub">confirmed trending</div>
+      <div class="metric-label">Multi-source</div>
+      <div class="metric-value yellow" id="m-amazon">0</div>
+      <div class="metric-sub">confirmed by 2+</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Categories</div>
@@ -329,7 +331,7 @@
   </div>
 
   <footer>
-    <span>TREND RADAR v2 — UK DROPSHIPPING INTELLIGENCE</span>
+    <span>TREND RADAR v3 — UK DROPSHIPPING INTELLIGENCE</span>
     <span id="footer-time">—</span>
   </footer>
 
@@ -338,6 +340,7 @@
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let currentSignals = [];
+let currentData = {};
 let autoRefreshTimer = null;
 
 function nowStr() {
@@ -408,20 +411,26 @@ function showState(state) {
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function renderAll(data) {
   currentSignals = data.signals || [];
+  currentData    = data || {};
 
   showState('ok');
 
   // Status bar
+  // Don't report OK for a scan that found nothing — that is how a stale or
+  // failing scanner ends up looking healthy.
+  const ok = currentSignals.length > 0;
   document.getElementById('status-bar').innerHTML =
-    `<span>STATUS:</span> OK &nbsp;|&nbsp;
-     <span>SCAN:</span> ${data.scan_date || '—'} &nbsp;|&nbsp;
+    `<span>STATUS:</span> <span style="color:${ok ? 'var(--accent)' : 'var(--warm)'}">${ok ? 'OK' : 'NO DATA'}</span> &nbsp;|&nbsp;
+     <span>SCAN:</span> ${esc(data.scan_date || '—')} &nbsp;|&nbsp;
      <span>PRODUCTS:</span> ${currentSignals.length}`;
 
   document.getElementById('scan-info').textContent = `last scan: ${data.scan_date || '—'}`;
 
   // Metrics
   const strong     = currentSignals.filter(s => s.strength === 'STRONG').length;
-  const confirmed  = currentSignals.filter(s => s.amazon_rank).length;
+  // Products backed by more than one source. Previously this counted anything
+  // with an Amazon rank, i.e. everything — the number was always the total.
+  const confirmed  = currentSignals.filter(s => (s.sources || []).length >= 2).length;
   const categories = [...new Set(currentSignals.map(s => s.category).filter(Boolean))];
 
   document.getElementById('m-keywords').textContent = currentSignals.length;
@@ -438,7 +447,9 @@ function renderAll(data) {
 }
 
 function renderCategories(categories) {
-  const all = ['health','beauty','kitchen','sport','pet','tech','toys','clothing'];
+  // Must match AMAZON_CATEGORIES in trend_radar.py. 'toys' and 'clothing' were
+  // listed here but are never scanned — Amazon UK has no M&S data for them.
+  const all = ['beauty','kitchen','pet','tech','diy','baby','automotive','music','health','sport'];
   const container = document.getElementById('cat-list');
   container.innerHTML = all.map(c =>
     `<div class="cat-tag ${categories.includes(c) ? 'active' : ''}">${c}</div>`
@@ -451,7 +462,35 @@ function renderTrendList(signals) {
   list.innerHTML = '';
 
   if (!signals.length) {
-    list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px;">No products found. Run a scan.</div>';
+    // Say why. A scan that finds nothing now pushes its diagnosis, so this
+    // reports the actual cause instead of leaving stale results on screen.
+    const notes = Array.isArray(currentData.notes) ? currentData.notes : [];
+    const tally = {};
+    notes.forEach(n => { tally[n.reason] = (tally[n.reason] || 0) + 1; });
+
+    const advice = {
+      'Amazon returned an empty list':
+        'Amazon has no movers &amp; shakers data right now. Nothing is broken — try again later.',
+      'blocked by Amazon':
+        'Amazon refused the requests. Wait a while before scanning again.',
+      'page layout changed':
+        'Amazon changed the page. The scraper needs updating.',
+      'grid rows not recognised':
+        'Amazon changed the product rows. The scraper needs updating.',
+      'no working URL':
+        'None of the category addresses were recognised by Amazon.',
+    };
+
+    const lines = Object.entries(tally).map(([reason, n]) =>
+      `<div style="margin-top:8px;"><strong style="color:var(--warm);">${esc(reason)}</strong>
+       <span style="color:var(--muted);"> — ${n} ${n === 1 ? 'category' : 'categories'}</span>
+       <div style="color:var(--muted);font-size:12px;margin-top:2px;">${advice[reason] || ''}</div></div>`
+    ).join('');
+
+    list.innerHTML = `<div style="padding:26px 30px;color:var(--muted);font-size:13px;">
+        <div style="color:var(--text);font-size:14px;">This scan found no products.</div>
+        ${lines || '<div style="margin-top:8px;">No diagnosis recorded. Run a scan and check the log.</div>'}
+      </div>`;
     return;
   }
 
@@ -474,8 +513,9 @@ function renderTrendList(signals) {
         </div>
         <div class="trend-change ${strengthClass}">${s.strength}</div>
         <div class="signal-dots">
-          <div class="sdot trends"></div>
-          <div class="sdot ${hasAmazon ? 'amazon' : ''}"></div>
+          <div class="sdot ${hasAmazon ? 'amazon' : ''}" title="Amazon M&S"></div>
+          <div class="sdot ${s.tiktok_hashtag ? 'tiktok' : ''}" title="TikTok hashtag"></div>
+          <div class="sdot ${s.ebay_listings ? 'ebay' : ''}" title="eBay price data"></div>
         </div>
       </div>`;
   });
@@ -520,25 +560,30 @@ function renderSparkline(signals) {
 }
 
 function renderSourceBars(signals) {
-  const total   = signals.length || 1;
-  const amazon  = signals.filter(s => s.amazon_rank).length;
+  const total = signals.length || 1;
+  const count = fn => signals.filter(fn).length;
 
-  document.getElementById('source-bars').innerHTML = `
+  // Sources that are switched off are labelled "off" rather than shown as a
+  // permanent 0% — the old version hardcoded TikTok to "coming soon" even
+  // though it was implemented, and drew a Reddit bar for a disabled scanner.
+  const rows = [
+    ['Amazon M&S',    count(s => s.amazon_rank),       true],
+    ['TikTok',        count(s => s.tiktok_hashtag),    true],
+    ['Pinterest',     count(s => s.pinterest_keyword), true],
+    ['eBay price',    count(s => s.ebay_listings),     true],
+    ['Reddit',        0, false],
+    ['Google Trends', 0, false],
+  ];
+
+  document.getElementById('source-bars').innerHTML = rows.map(([label, n, on]) => `
     <div class="bar-row">
-      <div class="bar-label">Reddit</div>
-      <div class="bar-track"><div class="bar-fill confirmed" style="width:${signals.filter(s => s.reddit_title).length / total * 100}%"></div></div>
-      <div class="bar-pct">${signals.filter(s => s.reddit_title).length}/${total}</div>
-    </div>
-    <div class="bar-row">
-      <div class="bar-label">TikTok</div>
-      <div class="bar-track"><div class="bar-fill unconfirmed" style="width:0%"></div></div>
-      <div class="bar-pct">coming soon</div>
-    </div>
-    <div class="bar-row">
-      <div class="bar-label">eBay</div>
-      <div class="bar-track"><div class="bar-fill ${signals.filter(s => s.ebay_name).length > 0 ? 'confirmed' : 'unconfirmed'}" style="width:${signals.filter(s => s.ebay_name).length / total * 100}%"></div></div>
-      <div class="bar-pct">${signals.filter(s => s.ebay_name).length}/${total}</div>
-    </div>`;
+      <div class="bar-label">${esc(label)}</div>
+      <div class="bar-track">
+        <div class="bar-fill ${n > 0 ? 'confirmed' : 'unconfirmed'}"
+             style="width:${on ? (n / total * 100).toFixed(1) : 0}%"></div>
+      </div>
+      <div class="bar-pct">${on ? n + '/' + signals.length : 'off'}</div>
+    </div>`).join('');
 }
 
 function renderAlerts(signals) {

@@ -1143,6 +1143,10 @@ class TrendRadar:
                     "and avoid running back-to-back scans."
                 )
 
+            # Push the empty result anyway. Returning early here meant a failed
+            # scan left the previous scan sitting on the dashboard looking
+            # current — the 17/05 data was still displayed on 14/08.
+            self._save(products, notes=getattr(self.amazon, "notes", []))
             self.telegram.send(f"TREND RADAR — no products this scan.\n{summary}")
             return []
 
@@ -1226,12 +1230,15 @@ class TrendRadar:
         log.info(f"Scan complete in {round(time.time() - start, 1)}s — {len(products)} products")
         return products
 
-    def _save(self, products: list[Product]) -> None:
+    def _save(self, products: list[Product], notes: list = None) -> None:
         data = {
             "status":        "ok",
             "scan_date":     datetime.now().strftime("%d/%m/%Y %H:%M"),
             "keywords_used": [],
             "signals":       [p.to_dict() for p in products],
+            # Why a scan came back empty, so the dashboard can say so instead of
+            # silently showing whatever was there before.
+            "notes":         [{"category": c, "reason": r} for c, r in (notes or [])],
         }
 
         # Write a local copy first, so a scan is never lost to a network error.
