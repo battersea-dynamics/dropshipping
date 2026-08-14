@@ -1,0 +1,39 @@
+warming up on the homepage...
+attempt 1: status=200 bytes=313780
+
+saved amazon_debug.html  bytes=313780
+title=Amazon.co.uk Movers and Shakers: The biggest gainers in Beauty sales rank over the past 24 hours
+
+--- current selectors ---
+    0  .p13n-desktop-grid li
+    0  li.zg-item-immersion
+    0  div.zg-item-immersion
+    0  li[class*='zg-item']
+
+--- most repeated elements (candidates for the product row) ---
+   56  a.nav_a
+   41  a.nav-a
+   30  div.nav-div
+   28  li.nav-li
+   16  li.navFooterDescItem
+   14  span.shortcut-key.nav-assistant-card-font.font-color
+   14  li.subnav-li
+   14  div.subnav-div
+   14  span.nav-a-content
+   13  h5.navFooterDescItem_heading
+   13  span.navFooterDescText
+   12  li.navFooterDescSpacer
+    9  span.plus-sign-color
+
+--- possible embedded data ---
+     0  occurrences of  p13n-sc-uncoverable-faceout
+     4  occurrences of  faceout
+     1  occurrences of  gridItemRoot
+     1  occurrences of  zg-bdg-text
+     0  occurrences of  p13n-sc-truncate
+     0  occurrences of  "asin"
+     1  occurrences of  data-client-recs-list
+     0  occurrences of  aok-inline-block
+   246  occurrences of  _cDEzb_
+
+--- where do rank badges like #1 live? ---
